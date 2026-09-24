@@ -396,6 +396,10 @@ def kobo_section(api, cfg, today):
     esc = html.escape
     n = datetime.strptime(today, "%Y-%m-%d").toordinal()
     out, shown = [], set()
+    # 2日以内に読み取ったポイントだけ使う
+    raw = load_json(DATA / "book_points.json", {})
+    lim = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=2)).strftime("%Y-%m-%d")
+    book_points = {k: v for k, v in raw.items() if v.get("date", "") >= lim}
     for sec in secs:
         popular, newest = [], []
         try:
@@ -412,28 +416,41 @@ def kobo_section(api, cfg, today):
         popular = list(uniq.values())[:30]
         if not popular:
             continue
-        start = (n * 4) % len(popular)
+        # Chromeで読み取ったポイント（毎朝6:40のタスク）があれば、還元率が高い順に並べる
+        for b in popular:
+            pinfo = book_points.get(b["item_number"])
+            b["rate"] = pinfo["rate"] if pinfo else 1
+            b["pts"] = pinfo["points"] if pinfo else b["price"] // 100
         books = []
-        for i in range(len(popular)):
-            b = popular[(start + i) % len(popular)]
-            if b["item_number"] not in shown:
-                books.append(("人気", b)); shown.add(b["item_number"])
-            if len(books) == 4:
-                break
+        if any(b["rate"] > 1 for b in popular) or book_points:
+            ranked = sorted(popular, key=lambda b: (-b["rate"], -b["pts"], -b["review_count"]))
+            for b in ranked:
+                if b["item_number"] not in shown:
+                    books.append(("ポイント" if b["rate"] > 1 else "人気", b)); shown.add(b["item_number"])
+                if len(books) == 4:
+                    break
+        else:
+            start = (n * 4) % len(popular)
+            for i in range(len(popular)):
+                b = popular[(start + i) % len(popular)]
+                if b["item_number"] not in shown:
+                    books.append(("人気", b)); shown.add(b["item_number"])
+                if len(books) == 4:
+                    break
         for b in newest:
             if b["item_number"] not in shown and len(books) < 6:
                 books.append(("新着", b)); shown.add(b["item_number"])
         cards = []
         for tag, b in books:
-            img = f"<img class=book src='{esc(b['image'])}' alt='' loading=lazy>" if b.get("image") else "<div class=noimg>No Image</div>"
+            img = (f"<span class=hot>🔥ポイント{b['rate']}倍</span>" if b.get("rate", 1) >= 2 else "") + (f"<img class=book src='{esc(b['image'])}' alt='' loading=lazy>" if b.get("image") else "<div class=noimg>No Image</div>")
             rv = f"⭐{b['review_avg']}（{b['review_count']:,}件）" if b["review_count"] else "レビューはまだありません"
             cards.append(
                 f"<a class=card href='{esc(b['url'])}' rel='sponsored nofollow noopener' target=_blank>"
                 f"<span class=gtag>{tag}・{esc(b['author'][:16])}</span>{img}"
                 f"<span class=nm>{esc(short_name(b['title'], 40))}</span>"
-                f"<span class=yen>¥{b['price']:,}</span><span class=pts>ポイント1倍（{b['price'] // 100:,}pt）</span>"
+                f"<span class=yen>¥{b['price']:,}</span><span class=pts>ポイント{b.get('rate', 1)}倍（{b.get('pts', b['price'] // 100):,}pt）</span>"
                 f"<span class=rv>{rv}</span><span class=go>楽天Koboで見る →</span></a>")
-        out.append(f"<section><h2>{esc(sec['name'])}の本（楽天Kobo電子書籍・毎朝入れ替え）</h2>"
+        out.append(f"<section><h2>{esc(sec['name'])}の本（楽天Kobo電子書籍・ポイント還元が高い順）</h2>"
                    "<div class=cards>" + "".join(cards) + "</div></section>")
     return "".join(out)
 
@@ -505,9 +522,9 @@ a{{color:inherit}}
 <h1>{esc(cfg['site_title'])}</h1>
 <p class=disc>PR｜楽天アフィリエイト・Amazonアソシエイトを利用しています。価格・ポイントは{stamp}時点のものです。</p>
 {picks_html(picks)}
-{books_html}
 {articles_html()}
 {''.join(sections)}
+{books_html}
 <p class=meta>最終更新：{stamp}</p>
 <p class=disc>Amazonのアソシエイトとして、当サイトは適格販売により収入を得ています。</p>
 </main></body></html>"""
