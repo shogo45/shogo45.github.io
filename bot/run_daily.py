@@ -308,7 +308,8 @@ def picks_html(picks):
                 f"<a class=card href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
                 f"<span class=gtag>{esc(g)}・{it['rank']}位</span>{img}"
                 f"<span class=nm>{esc(short_name(it['name'], 40))}</span>"
-                f"<span class=yen>¥{it['price']:,}{pt}</span>"
+                f"<span class=yen>¥{it['price']:,}</span>"
+                f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（約{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
                 f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
                 f"<span class=go>楽天で見る →</span></a>")
     return ("<section><h2>今日の注目：ポイント倍率が高い順（楽天ランキングから・毎朝入れ替え）</h2>"
@@ -357,7 +358,7 @@ def render_site(cfg, results, stamp, picks=None):
     for r in results:
         rows = []
         for i, it in enumerate(r["items"], 1):
-            pt = f"<span class=pt>P{it['point_rate']}倍</span>" if it["point_rate"] > 1 else ""
+            pt = (f"<span class=pt>ポイント{it['point_rate']}倍<br>約{it['price'] * it['point_rate'] // 100:,}pt</span>")
             rows.append(
                 f"<tr><td class=n>{i}</td>"
                 f"<td><a class=row href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
@@ -402,6 +403,7 @@ th,td{{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;verti
 .card img{{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:8px}}
 .noimg{{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f3f3f3;color:#999;border-radius:8px;font-size:12px}}
 .card{{position:relative}} .hot{{position:absolute;top:34px;left:14px;background:#e11d48;color:#fff;font-weight:800;font-size:12px;padding:3px 8px;border-radius:999px;box-shadow:0 2px 4px rgba(0,0,0,.2)}}
+.pts{{font-size:12px;font-weight:700;color:#e11d48}}
 .gtag{{font-size:11px;color:var(--mut)}}
 .ic{{font-size:64px;text-align:center;line-height:1.3;background:#fff7ed;border-radius:8px;padding:10px 0}}
 .go.amz{{background:#ff9900;color:#111}} .nm{{font-size:13px;line-height:1.4}} .yen{{font-weight:800;color:var(--acc);font-size:16px}}
@@ -414,7 +416,6 @@ a{{color:inherit}}
 <h1>{esc(cfg['site_title'])}</h1>
 <p class=disc>PR｜楽天アフィリエイト・Amazonアソシエイト（適格販売により収入を得ています）を利用しています。価格・ポイントは{stamp}時点のものです。</p>
 {picks_html(picks)}
-{amazon_html(cfg, [r["name"] for r in results])}
 {articles_html()}
 {''.join(sections)}
 <p class=meta>最終更新：{stamp}</p>
