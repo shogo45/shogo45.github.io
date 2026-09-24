@@ -7,7 +7,7 @@
   },
   {
    "date": "2026-09-25",
-   "min_effective": 1485,
+   "min_effective": 1428,
    "min_price": 1500
   }
  ],
@@ -43,8 +43,8 @@
   },
   {
    "date": "2026-09-25",
-   "min_effective": 1089,
-   "min_price": 1100
+   "min_effective": 864,
+   "min_price": 910
   }
  ],
  "日焼け止め": [
@@ -109,8 +109,8 @@
  "トイレ用洗剤": [
   {
    "date": "2026-09-25",
-   "min_effective": 437,
-   "min_price": 441
+   "min_effective": 213,
+   "min_price": 215
   }
  ]
 }
