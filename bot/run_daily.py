@@ -388,7 +388,57 @@ def amazon_html(cfg, watch_names):
     return "<section><h2>Amazonでも比べる</h2><div class=cards>" + "".join(cards) + "</div></section>"
 
 
-def render_site(cfg, results, stamp, picks=None):
+def kobo_section(api, cfg, today):
+    """本（楽天Kobo電子書籍）：ジャンルごとに、人気上位から日替わりで4冊＋新着2冊。"""
+    secs = cfg.get("kobo_sections") or []
+    if not secs:
+        return ""
+    esc = html.escape
+    n = datetime.strptime(today, "%Y-%m-%d").toordinal()
+    out, shown = [], set()
+    for sec in secs:
+        popular, newest = [], []
+        try:
+            for gid in sec["genres"]:
+                popular += api.kobo_books(gid, "reviewCount", 30)
+                newest += [b for b in api.kobo_books(gid, "-releaseDate", 20) if b["price"] > 0][:4]
+        except RuntimeError as e:
+            print(f"   ⚠ Koboの取得に失敗（{sec['name']}）: {e}", file=sys.stderr)
+            continue
+        uniq = {}
+        for b in sorted(popular, key=lambda b: -b["review_count"]):
+            if b["item_number"] not in uniq and b["price"] > 0:
+                uniq[b["item_number"]] = b
+        popular = list(uniq.values())[:30]
+        if not popular:
+            continue
+        start = (n * 4) % len(popular)
+        books = []
+        for i in range(len(popular)):
+            b = popular[(start + i) % len(popular)]
+            if b["item_number"] not in shown:
+                books.append(("人気", b)); shown.add(b["item_number"])
+            if len(books) == 4:
+                break
+        for b in newest:
+            if b["item_number"] not in shown and len(books) < 6:
+                books.append(("新着", b)); shown.add(b["item_number"])
+        cards = []
+        for tag, b in books:
+            img = f"<img class=book src='{esc(b['image'])}' alt='' loading=lazy>" if b.get("image") else "<div class=noimg>No Image</div>"
+            rv = f"⭐{b['review_avg']}（{b['review_count']:,}件）" if b["review_count"] else "レビューはまだありません"
+            cards.append(
+                f"<a class=card href='{esc(b['url'])}' rel='sponsored nofollow noopener' target=_blank>"
+                f"<span class=gtag>{tag}・{esc(b['author'][:16])}</span>{img}"
+                f"<span class=nm>{esc(short_name(b['title'], 40))}</span>"
+                f"<span class=yen>¥{b['price']:,}</span><span class=pts>ポイント1倍（{b['price'] // 100:,}pt）</span>"
+                f"<span class=rv>{rv}</span><span class=go>楽天Koboで見る →</span></a>")
+        out.append(f"<section><h2>{esc(sec['name'])}の本（楽天Kobo電子書籍・毎朝入れ替え）</h2>"
+                   "<div class=cards>" + "".join(cards) + "</div></section>")
+    return "".join(out)
+
+
+def render_site(cfg, results, stamp, picks=None, books_html=""):
     esc = html.escape
     sections = []
     for r in results:
@@ -438,6 +488,7 @@ th,td{{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;verti
 .card{{display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:12px;padding:10px;text-decoration:none;color:inherit;background:var(--card);box-shadow:0 2px 6px rgba(0,0,0,.06);transition:transform .15s}}
 .card:hover{{transform:translateY(-2px)}}
 .card img{{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:8px}}
+.card img.book{{aspect-ratio:3/4}}
 .noimg{{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f3f3f3;color:#999;border-radius:8px;font-size:12px}}
 .card{{position:relative}} .hot{{position:absolute;top:34px;left:14px;background:#e11d48;color:#fff;font-weight:800;font-size:12px;padding:3px 8px;border-radius:999px;box-shadow:0 2px 4px rgba(0,0,0,.2)}}
 .pts{{font-size:12px;font-weight:700;color:#e11d48}}
@@ -454,6 +505,7 @@ a{{color:inherit}}
 <h1>{esc(cfg['site_title'])}</h1>
 <p class=disc>PR｜楽天アフィリエイト・Amazonアソシエイトを利用しています。価格・ポイントは{stamp}時点のものです。</p>
 {picks_html(picks)}
+{books_html}
 {articles_html()}
 {''.join(sections)}
 <p class=meta>最終更新：{stamp}</p>
@@ -489,7 +541,7 @@ def main():
     out.write_text(("\n\n" + "-" * 30 + "\n\n").join(texts) + "\n", encoding="utf-8")
 
     results = price_watch(api, cfg, today, exclude=[p["item_code"] for p in posts])
-    render_site(cfg, results, stamp, posts)
+    render_site(cfg, results, stamp, posts, kobo_section(api, cfg, today))
     queue = build_queue(posts, texts, today, results)
 
     lines = ["■ 最安値（実質価格）"]

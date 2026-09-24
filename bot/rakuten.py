@@ -12,6 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+KOBO_URL = "https://openapi.rakuten.co.jp/services/api/Kobo/EbookSearch/20170426"
 SEARCH_URL = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
 RANKING_URL = "https://openapi.rakuten.co.jp/ichibaranking/api/IchibaItem/Ranking/20220601"
 
@@ -102,6 +103,26 @@ class Rakuten:
             }
             for it in data.get("Items", [])
         ]
+
+    def kobo_books(self, genre_id, sort="reviewCount", hits=30):
+        """楽天Kobo電子書籍。ポイント倍率の項目はAPIにないので、通常ポイント（1倍）として扱う。"""
+        if self.mock:
+            return []
+        data = self._get(KOBO_URL, {"koboGenreId": str(genre_id), "sort": sort, "hits": hits})
+        out = []
+        for it in data.get("Items", []):
+            it = it.get("Item", it)
+            out.append({
+                "title": it.get("title", ""), "author": it.get("author", ""),
+                "price": int(it.get("itemPrice") or 0),
+                "url": it.get("affiliateUrl") or it.get("itemUrl", ""),
+                "image": (it.get("largeImageUrl") or it.get("mediumImageUrl") or ""),
+                "review_count": int(it.get("reviewCount") or 0),
+                "review_avg": float(it.get("reviewAverage") or 0),
+                "item_number": it.get("itemNumber", ""),
+                "sales_date": it.get("salesDate", ""),
+            })
+        return out
 
     def item_detail(self, item_code):
         """ランキングAPIの pointRate は古いことがあるので、商品検索APIで最新の倍率と終了日時を取り直す。"""
