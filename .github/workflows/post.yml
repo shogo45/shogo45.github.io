@@ -1,0 +1,49 @@
+name: post
+
+on:
+  schedule:
+    - cron: "40 22 * * *"   # 07:40 JST ランキング1位まとめ（リンクなし）
+    - cron: "10 3 * * *"    # 12:10 JST サイト更新のお知らせ
+    - cron: "30 9 * * *"    # 18:30 JST ポイント締め切りまとめ（リンクなし）
+    - cron: "0 12 * * *"    # 21:00 JST 商品（PR｜）
+    - cron: "30 13 * * *"   # 22:30 JST 商品（PR｜）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-site   # daily.yml と同じ。push がぶつからないよう順番に実行
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Post to Bluesky
+        env:
+          TZ: Asia/Tokyo
+          OUT_DIR: bot/out
+          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+        run: python bot/post_bsky.py
+
+      - name: Commit queue state
+        if: always()
+        env:
+          TZ: Asia/Tokyo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bot/out
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -qm "post $(date '+%Y-%m-%d %H:%M') (actions)"
+          git pull --rebase -q origin main
+          git push -q origin main
