@@ -231,7 +231,19 @@ def todays_watchlist(cfg, today):
     return cfg["watchlist"] + [pool[(start + i) % len(pool)] for i in range(n)]
 
 
-def price_watch(api, cfg, today):
+COLOR_WORDS = r"(ブラック|ホワイト|白|黒|ピンク|ブルー|グレー|レッド|グリーン|ベージュ|パープル|紫|ネイビー|シルバー|ゴールド|イエロー|オレンジ|ブラウン|クリーム|色|カラー)"
+
+
+def dedupe_key(it):
+    """色違い・同じ商品の出品違いをまとめるためのキー（商品名の頭の部分から色の言葉と記号を除いたもの）。"""
+    n = re.sub(COLOR_WORDS, "", short_name(it["name"], 80))
+    n = re.sub(r"[\s　・/｜|()（）\[\]【】,，、。!！?？\-]", "", n)
+    return n[:14]
+
+
+def price_watch(api, cfg, today, exclude=None):
+    """exclude：ほかの欄にすでに出している商品コード（項目をまたいだ重複を避ける）"""
+    shown = set(exclude or [])
     hist_path = DATA / "price_history.json"
     hist = load_json(hist_path, {})
     cutoff = (datetime.now() - timedelta(days=HISTORY_DAYS)).strftime("%Y-%m-%d")
@@ -264,7 +276,17 @@ def price_watch(api, cfg, today):
             # 実質価格＝価格−獲得ポイント（通常1倍=1%として計算）
             it["effective"] = round(it["price"] * (1 - it["point_rate"] / 100))
         items.sort(key=lambda x: x["effective"])
-        top = items[:5]
+        # 重複を除く：同じ商品（色違い・出品違い）は一番安い1件だけ、ほかの項目に出た商品も除く
+        top, keys = [], set()
+        for it in items:
+            k = dedupe_key(it)
+            k2 = (it.get("shop", ""), k[:6])   # 同じショップの香り違い・サイズ違い
+            k3 = "".join(short_name(it["name"], 80).split()[:3])   # 別ショップの同じ商品（名前の最初の3語が同じ）
+            if it["item_code"] in shown or k in keys or k2 in keys or k3 in keys:
+                continue
+            keys.update([k, k2, k3]); shown.add(it["item_code"]); top.append(it)
+            if len(top) == 5:
+                break
 
         h = [x for x in hist.get(w["name"], []) if x["date"] >= cutoff and x["date"] != today]
         if top:
@@ -303,9 +325,13 @@ def picks_html(picks):
     esc = html.escape
     by, cards = {}, []
     # ポイント倍率が高い順を優先（同じ倍率ならレビューが多い順）。ジャンルごとに最大2件
+    seen = set()
     for p in sorted(picks, key=lambda p: (-p.get("point_rate", 1), -p.get("review_count", 0))):
+        k = dedupe_key(p)
+        if k in seen:
+            continue
         if len(by.setdefault(p["genre"], [])) < 2:
-            by[p["genre"]].append(p)
+            by[p["genre"]].append(p); seen.add(k)
     flat = sorted((it for items in by.values() for it in items),
                   key=lambda p: (-p.get("point_rate", 1), -p.get("review_count", 0)))
     for it in flat:
@@ -462,7 +488,7 @@ def main():
     out = OUT / f"posts_{today}.txt"
     out.write_text(("\n\n" + "-" * 30 + "\n\n").join(texts) + "\n", encoding="utf-8")
 
-    results = price_watch(api, cfg, today)
+    results = price_watch(api, cfg, today, exclude=[p["item_code"] for p in posts])
     render_site(cfg, results, stamp, posts)
     queue = build_queue(posts, texts, today, results)
 
