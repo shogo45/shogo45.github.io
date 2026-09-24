@@ -287,22 +287,68 @@ def articles_html():
 
 
 def picks_html(picks):
-    """今日の注目：ランキングからジャンルごとに2件ずつ（毎日入れ替わる）。"""
+    """今日の注目：ランキングからジャンルごとに2件ずつ、画像付きカードで（毎日入れ替わる）。"""
     if not picks:
         return ""
     esc = html.escape
-    by, rows = {}, []
-    for p in sorted(picks, key=lambda p: (-p.get("review_count", 0))):
+    by, cards = {}, []
+    # ポイント倍率が高い順を優先（同じ倍率ならレビューが多い順）。ジャンルごとに最大2件
+    for p in sorted(picks, key=lambda p: (-p.get("point_rate", 1), -p.get("review_count", 0))):
         if len(by.setdefault(p["genre"], [])) < 2:
             by[p["genre"]].append(p)
-    for g, items in by.items():
-        for it in items:
-            pt = f"<span class=pt>P{it['point_rate']}倍</span>" if it.get("point_rate", 1) > 1 else ""
-            rows.append(f"<tr><td class=n>{esc(g)}</td><td><a href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
-                        f"{esc(short_name(it['name'], 50))}</a><div class=shop>{it['rank']}位・⭐{it['review_avg']}（{it['review_count']:,}件）</div></td>"
-                        f"<td class=num>¥{it['price']:,}{pt}</td></tr>")
-    return ("<section><h2>今日の注目（楽天ランキングから・毎朝入れ替え）</h2><div class=scroll><table>"
-            "<thead><tr><th>ジャンル</th><th>商品</th><th>価格</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div></section>")
+    flat = sorted((it for items in by.values() for it in items),
+                  key=lambda p: (-p.get("point_rate", 1), -p.get("review_count", 0)))
+    for it in flat:
+        g = it["genre"]
+        if True:
+            pt = ""
+            badge = f"<span class=hot>🔥ポイント{it['point_rate']}倍</span>" if it.get("point_rate", 1) >= 2 else ""
+            img = badge + (f"<img src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "<div class=noimg>No Image</div>")
+            cards.append(
+                f"<a class=card href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
+                f"<span class=gtag>{esc(g)}・{it['rank']}位</span>{img}"
+                f"<span class=nm>{esc(short_name(it['name'], 40))}</span>"
+                f"<span class=yen>¥{it['price']:,}{pt}</span>"
+                f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
+                f"<span class=go>楽天で見る →</span></a>")
+    return ("<section><h2>今日の注目：ポイント倍率が高い順（楽天ランキングから・毎朝入れ替え）</h2>"
+            "<div class=cards>" + "".join(cards) + "</div></section>")
+
+
+AMZ_ICON = {"モバイルバッテリー": "🔋", "イヤホン": "🎧", "充電器": "🔌", "化粧水": "🧴", "日焼け止め": "☀️",
+            "サプリ": "💊", "洗濯洗剤": "🧺", "柔軟剤": "🌸", "トイレ": "🚽", "ティッシュ": "🧻", "トイレットペーパー": "🧻",
+            "ミネラルウォーター": "💧", "米": "🍚", "プロテイン": "💪", "シャンプー": "🫧", "歯ブラシ": "🪥", "加湿器": "💨", "マウス": "🖱️"}
+
+
+def amazon_html(cfg, watch_names):
+    """Amazonの紹介。APIが使えるまでは画像・価格は出せない（楽天の画像の流用も不可）ので、アイコンのカードで検索ページへ。"""
+    tag = cfg.get("amazon_tag")
+    if not tag:
+        return ""
+    esc = html.escape
+    def icon(n):
+        return next((v for k, v in AMZ_ICON.items() if k in n), "🛒")
+    used = []
+    try:
+        arts = json.loads((DATA / "articles.json").read_text(encoding="utf-8"))
+        for a in arts:
+            for x in a.get("amazon", []):
+                used.append(x)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    cards = []
+    for x in used:
+        u = f"https://www.amazon.co.jp/s?k={urllib.parse.quote(x['kw'])}&tag={tag}"
+        cards.append(f"<a class='card amzc' href='{esc(u)}' rel='sponsored nofollow noopener' target=_blank>"
+                     f"<span class=gtag>実際に使ったもの</span><span class=ic>{icon(x['kw'])}</span>"
+                     f"<span class=nm>{esc(x['hook'])}</span><span class=rv>{esc(x['body'][:48])}…</span>"
+                     f"<span class='go amz'>Amazonで見る →</span></a>")
+    for n in watch_names:
+        u = f"https://www.amazon.co.jp/s?k={urllib.parse.quote(n)}&tag={tag}"
+        cards.append(f"<a class='card amzc' href='{esc(u)}' rel='sponsored nofollow noopener' target=_blank>"
+                     f"<span class=gtag>Amazonの売れ筋から探す</span><span class=ic>{icon(n)}</span>"
+                     f"<span class=nm>{esc(n)}</span><span class='go amz'>Amazonで比べる →</span></a>")
+    return "<section><h2>Amazonでも比べる</h2><div class=cards>" + "".join(cards) + "</div></section>"
 
 
 def render_site(cfg, results, stamp, picks=None):
@@ -314,7 +360,9 @@ def render_site(cfg, results, stamp, picks=None):
             pt = f"<span class=pt>P{it['point_rate']}倍</span>" if it["point_rate"] > 1 else ""
             rows.append(
                 f"<tr><td class=n>{i}</td>"
-                f"<td><a href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>{esc(short_name(it['name'], 60))}</a>"
+                f"<td><a class=row href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
+                + (f"<img class=th src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "")
+                + f"<span>{esc(short_name(it['name'], 60))}</span></a>"
                 f"<div class=shop>{esc(it['shop'])}・⭐{it['review_avg']}（{it['review_count']}件）</div></td>"
                 f"<td class=num>¥{it['price']:,}{pt}</td><td class='num eff'>¥{it['effective']:,}</td></tr>"
             )
@@ -339,6 +387,7 @@ def render_site(cfg, results, stamp, picks=None):
 @media (prefers-color-scheme:dark){{:root{{--bg:#1c1917;--fg:#f5f5f4;--mut:#a8a29e;--line:#44403c;--acc:#f87171;--card:#292524}}}}
 body{{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,"Hiragino Sans",sans-serif}}
 main{{max-width:860px;margin:auto;padding:16px}}
+.disc{{font-size:11px;color:var(--mut);margin:4px 0 12px}}
 .pr{{border:1px solid var(--line);background:var(--card);padding:8px 12px;border-radius:8px;font-size:13px;color:var(--mut)}}
 section{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:16px 0}}
 h1{{font-size:22px}} h2{{font-size:17px;margin:4px 0}}
@@ -347,12 +396,25 @@ th,td{{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;verti
 .num{{text-align:right;white-space:nowrap}} .eff{{font-weight:700;color:var(--acc)}}
 .n{{color:var(--mut)}} .shop,.meta{{font-size:12px;color:var(--mut);margin:0}}
 .amz a{{display:inline-block;margin:6px 0 2px;padding:6px 12px;border-radius:8px;background:#ff9900;color:#111;text-decoration:none;font-weight:600;font-size:13px}}
+.cards{{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}}
+.card{{display:flex;flex-direction:column;gap:4px;border:1px solid var(--line);border-radius:12px;padding:10px;text-decoration:none;color:inherit;background:var(--card);box-shadow:0 2px 6px rgba(0,0,0,.06);transition:transform .15s}}
+.card:hover{{transform:translateY(-2px)}}
+.card img{{width:100%;aspect-ratio:1;object-fit:contain;background:#fff;border-radius:8px}}
+.noimg{{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f3f3f3;color:#999;border-radius:8px;font-size:12px}}
+.card{{position:relative}} .hot{{position:absolute;top:34px;left:14px;background:#e11d48;color:#fff;font-weight:800;font-size:12px;padding:3px 8px;border-radius:999px;box-shadow:0 2px 4px rgba(0,0,0,.2)}}
+.gtag{{font-size:11px;color:var(--mut)}}
+.ic{{font-size:64px;text-align:center;line-height:1.3;background:#fff7ed;border-radius:8px;padding:10px 0}}
+.go.amz{{background:#ff9900;color:#111}} .nm{{font-size:13px;line-height:1.4}} .yen{{font-weight:800;color:var(--acc);font-size:16px}}
+.rv{{font-size:11px;color:var(--mut)}} .go{{margin-top:auto;font-size:12px;font-weight:700;color:#fff;background:#bf0000;border-radius:6px;text-align:center;padding:5px}}
+a.row{{display:flex;gap:10px;align-items:center;color:inherit}} img.th{{width:56px;height:56px;object-fit:contain;background:#fff;border-radius:6px;flex:none;border:1px solid var(--line)}}
+@media (max-width:480px){{.cards{{grid-template-columns:1fr 1fr}}}}
 .pt{{display:block;font-size:11px;color:var(--acc)}} .low{{font-size:12px;color:var(--acc);margin-left:6px}}
 a{{color:inherit}}
 </style></head><body><main>
 <h1>{esc(cfg['site_title'])}</h1>
-<p class=pr>【PR】当ページは楽天アフィリエイトとAmazonアソシエイトを利用しています。Amazonのアソシエイトとして、当サイトは適格販売により収入を得ています。価格・ポイント倍率は{stamp}時点のもので、変わっている場合があります。購入前に必ず商品ページでご確認ください。<br>実質価格＝価格−獲得ポイント（通常1倍を1%として概算）。</p>
+<p class=disc>PR｜楽天アフィリエイト・Amazonアソシエイト（適格販売により収入を得ています）を利用しています。価格・ポイントは{stamp}時点のものです。</p>
 {picks_html(picks)}
+{amazon_html(cfg, [r["name"] for r in results])}
 {articles_html()}
 {''.join(sections)}
 <p class=meta>最終更新：{stamp}</p>

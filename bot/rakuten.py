@@ -34,6 +34,15 @@ def load_config(base):
         return None
 
 
+def big_image(it):
+    """楽天の商品画像（128px）を300pxに差し替えてくっきり表示する。"""
+    urls = it.get("mediumImageUrls") or []
+    u = urls[0] if urls else ""
+    if isinstance(u, dict):          # formatVersion=1 の形式にも対応
+        u = u.get("imageUrl", "")
+    return u.replace("_ex=128x128", "_ex=300x300")
+
+
 class Rakuten:
     def __init__(self, cfg, mock=False):
         self.cfg = cfg
@@ -89,6 +98,7 @@ class Rakuten:
                 "review_count": int(it.get("reviewCount") or 0),
                 "review_avg": float(it.get("reviewAverage") or 0),
                 "shop": it.get("shopName", ""),
+                "image": big_image(it),
             }
             for it in data.get("Items", [])
         ]
@@ -134,7 +144,7 @@ class Rakuten:
                 "review_count": int(it.get("reviewCount") or 0),
                 "review_avg": float(it.get("reviewAverage") or 0),
                 "shop": it.get("shopName", ""),
-                "image": (it.get("mediumImageUrls") or [""])[0],
+                "image": big_image(it),
             }
             for it in data.get("Items", [])
         ]
