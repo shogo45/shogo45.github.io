@@ -1,0 +1,57 @@
+name: daily
+
+on:
+  schedule:
+    - cron: "30 22 * * *"   # 07:30 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-site
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 記事一覧は更新日時の新しい順に並ぶので、チェックアウトで揃ってしまった mtime を最終コミット日時に戻す
+      - name: Restore article mtimes
+        run: |
+          for f in articles/*.html; do
+            [ -f "$f" ] && touch -d "$(git log -1 --format=%cI -- "$f")" "$f"
+          done
+
+      - name: Run pipeline
+        env:
+          TZ: Asia/Tokyo
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          SITE_DIR: .
+          DATA_DIR: bot/data
+          OUT_DIR: bot/out
+        run: python bot/run_daily.py
+
+      - name: Commit and push
+        env:
+          TZ: Asia/Tokyo
+        run: |
+          touch .nojekyll
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -qm "update $(date '+%Y-%m-%d %H:%M') (actions)"
+          git pull --rebase -q origin main
+          git push -q origin main
