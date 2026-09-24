@@ -40,5 +40,26 @@
    "min_effective": 881,
    "min_price": 890
   }
+ ],
+ "電動歯ブラシ 替えブラシ": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 574,
+   "min_price": 580
+  }
+ ],
+ "加湿器": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 1904,
+   "min_price": 2380
+  }
+ ],
+ "ワイヤレスマウス": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 990,
+   "min_price": 1000
+  }
  ]
 }
