@@ -322,7 +322,7 @@ def picks_html(picks):
                 f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
                 f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
                 f"<span class=go>楽天で見る →</span></a>")
-    return ("<section><h2>ポイント倍率が最高の商品（楽天ランキングから・毎朝入れ替え）</h2>"
+    return ("<section><h2>ポイント倍率が高い商品（楽天ランキングから・毎朝入れ替え）</h2>"
             "<div class=cards>" + "".join(cards) + "</div></section>")
 
 
@@ -379,7 +379,7 @@ def render_site(cfg, results, stamp, picks=None):
                 f"<td class=num>¥{it['price']:,}{pt}</td><td class='num eff'>¥{it['effective']:,}</td></tr>"
             )
         badge = ""
-        low = f"直近30日の実質最安：¥{r['low_30']:,}（観測{r['days']}日）" if r["low_30"] else ""
+        low = f"直近30日の実質最安：¥{r['low_30']:,}" if r["low_30"] else ""
         amz = ""
         if cfg.get("amazon_tag"):
             kw = urllib.parse.quote(r.get("amazon_keyword") or r["name"])
