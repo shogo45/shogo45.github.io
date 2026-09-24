@@ -319,7 +319,7 @@ def picks_html(picks):
                 f"<span class=gtag>{esc(g)}・{it['rank']}位</span>{img}"
                 f"<span class=nm>{esc(short_name(it['name'], 40))}</span>"
                 f"<span class=yen>¥{it['price']:,}</span>"
-                f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（約{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
+                f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
                 f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
                 f"<span class=go>楽天で見る →</span></a>")
     return ("<section><h2>ポイント倍率が最高の商品（楽天ランキングから・毎朝入れ替え）</h2>"
@@ -369,16 +369,16 @@ def render_site(cfg, results, stamp, picks=None):
         rows = []
         for i, it in enumerate(r["items"], 1):
             hot = " hotpt" if it["point_rate"] >= 5 else ""
-            pt = (f"<span class='pt{hot}'>{'🔥' if hot else ''}ポイント{it['point_rate']}倍<br>約{it['price'] * it['point_rate'] // 100:,}pt</span>")
+            pt = (f"<span class='pt{hot}'>{'🔥' if hot else ''}ポイント{it['point_rate']}倍<br>{it['price'] * it['point_rate'] // 100:,}pt</span>")
             rows.append(
-                f"<tr><td class=n>{i}</td>"
+                f"<tr>"
                 f"<td><a class=row href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
                 + (f"<img class=th src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "")
                 + f"<span>{esc(short_name(it['name'], 60))}</span></a>"
                 f"<div class=shop>{esc(it['shop'])}・⭐{it['review_avg']}（{it['review_count']}件）</div></td>"
                 f"<td class=num>¥{it['price']:,}{pt}</td><td class='num eff'>¥{it['effective']:,}</td></tr>"
             )
-        badge = "<span class=low>📉 観測史上最安</span>" if r["is_new_low"] else ""
+        badge = ""
         low = f"直近30日の実質最安：¥{r['low_30']:,}（観測{r['days']}日）" if r["low_30"] else ""
         amz = ""
         if cfg.get("amazon_tag"):
@@ -387,8 +387,8 @@ def render_site(cfg, results, stamp, picks=None):
                    f"rel='sponsored nofollow noopener' target=_blank>Amazonで「{esc(r['name'])}」を見る →</a></p>")
         sections.append(
             f"<section><h2>{esc(r['name'])}の実質最安 {badge}</h2><p class=meta>{low}</p>{amz}"
-            f"<div class=scroll><table><thead><tr><th>#</th><th>商品</th><th>価格</th><th>実質</th></tr></thead>"
-            f"<tbody>{''.join(rows) or '<tr><td colspan=4>該当なし</td></tr>'}</tbody></table></div></section>"
+            f"<div class=scroll><table><thead><tr><th></th><th>価格</th><th>実質</th></tr></thead>"
+            f"<tbody>{''.join(rows) or '<tr><td colspan=3>該当なし</td></tr>'}</tbody></table></div></section>"
         )
 
     page = f"""<!doctype html><html lang=ja><head><meta charset=utf-8>
@@ -397,7 +397,7 @@ def render_site(cfg, results, stamp, picks=None):
 <style>
 :root{{--bg:#fafaf9;--fg:#1c1917;--mut:#78716c;--line:#e7e5e4;--acc:#bf0000;--card:#fff}}
 @media (prefers-color-scheme:dark){{:root{{--bg:#1c1917;--fg:#f5f5f4;--mut:#a8a29e;--line:#44403c;--acc:#f87171;--card:#292524}}}}
-body{{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,"Hiragino Sans",sans-serif}}
+body{{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 Meiryo,"メイリオ","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif}}
 main{{max-width:860px;margin:auto;padding:16px}}
 .disc{{font-size:11px;color:var(--mut);margin:4px 0 12px}}
 .pr{{border:1px solid var(--line);background:var(--card);padding:8px 12px;border-radius:8px;font-size:13px;color:var(--mut)}}
