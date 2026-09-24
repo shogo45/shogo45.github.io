@@ -5,6 +5,7 @@
 体験は data/articles.json（本人の言葉）だけを使う。倍率は予約時刻に有効なものだけ書く。
 """
 import json
+import urllib.parse
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -55,6 +56,14 @@ def main(start, days):
             text = v + SITE
         batch.append({"at": f"{d} 18:30", "kind": "article", "text": text})
         at = datetime.strptime(f"{d} 21:00", "%Y-%m-%d %H:%M")
+        amz_items = [x for a in arts for x in a.get("amazon", [])]
+        if cfg.get("amazon_tag") and amz_items and (start.toordinal() + i) % 2 == 1:
+            # 1日おきにAmazon：本人が実際に買って使った商品だけ。価格は書かない（Amazonの規約）
+            x = amz_items[((start.toordinal() + i) // 2) % len(amz_items)]
+            url = f"https://www.amazon.co.jp/s?k={urllib.parse.quote(x['kw'])}&tag={cfg['amazon_tag']}"
+            batch.append({"at": f"{d} 21:00", "kind": "amazon",
+                          "text": f"PR｜{x['hook']}\n\n{x['body']}\n\nAmazonはこちら👇\n{url}\n#Amazon"})
+            continue
         for c in pool:
             end = datetime.strptime(c["point_end"][:16], "%Y-%m-%d %H:%M")
             if c["item_code"] in used or c.get("shop") in shops or end <= at + timedelta(hours=3):
