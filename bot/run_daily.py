@@ -221,13 +221,23 @@ GENRE_TAGS = {
 
 
 # ---------------- ③ 最安値ウォッチ ----------------
+def todays_watchlist(cfg, today):
+    """固定の監視商品＋日替わりのカテゴリ（watchlist_pool から毎日 pool_per_day 個を順番に）。"""
+    pool = cfg.get("watchlist_pool", [])
+    n = cfg.get("pool_per_day", 0)
+    if not pool or not n:
+        return cfg["watchlist"]
+    start = (datetime.strptime(today, "%Y-%m-%d").toordinal() * n) % len(pool)
+    return cfg["watchlist"] + [pool[(start + i) % len(pool)] for i in range(n)]
+
+
 def price_watch(api, cfg, today):
     hist_path = DATA / "price_history.json"
     hist = load_json(hist_path, {})
     cutoff = (datetime.now() - timedelta(days=HISTORY_DAYS)).strftime("%Y-%m-%d")
     results = []
 
-    for w in cfg["watchlist"]:
+    for w in todays_watchlist(cfg, today):
         # 安い順の上位はアクセサリーで埋まりがちなので、除外後に5件そろうまで最大3ページ見る
         # 美容・健康のように種類が多いものは sort=-reviewCount（人気順）で取り、その中で実質価格の安い順に並べる
         ng = w.get("ng_words", [])
@@ -276,7 +286,26 @@ def articles_html():
     return f"<section><h2>比較記事</h2><ul>{''.join(items)}</ul></section>"
 
 
-def render_site(cfg, results, stamp):
+def picks_html(picks):
+    """今日の注目：ランキングからジャンルごとに2件ずつ（毎日入れ替わる）。"""
+    if not picks:
+        return ""
+    esc = html.escape
+    by, rows = {}, []
+    for p in sorted(picks, key=lambda p: (-p.get("review_count", 0))):
+        if len(by.setdefault(p["genre"], [])) < 2:
+            by[p["genre"]].append(p)
+    for g, items in by.items():
+        for it in items:
+            pt = f"<span class=pt>P{it['point_rate']}倍</span>" if it.get("point_rate", 1) > 1 else ""
+            rows.append(f"<tr><td class=n>{esc(g)}</td><td><a href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
+                        f"{esc(short_name(it['name'], 50))}</a><div class=shop>{it['rank']}位・⭐{it['review_avg']}（{it['review_count']:,}件）</div></td>"
+                        f"<td class=num>¥{it['price']:,}{pt}</td></tr>")
+    return ("<section><h2>今日の注目（楽天ランキングから・毎朝入れ替え）</h2><div class=scroll><table>"
+            "<thead><tr><th>ジャンル</th><th>商品</th><th>価格</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div></section>")
+
+
+def render_site(cfg, results, stamp, picks=None):
     esc = html.escape
     sections = []
     for r in results:
@@ -323,6 +352,7 @@ a{{color:inherit}}
 </style></head><body><main>
 <h1>{esc(cfg['site_title'])}</h1>
 <p class=pr>【PR】当ページは楽天アフィリエイトとAmazonアソシエイトを利用しています。Amazonのアソシエイトとして、当サイトは適格販売により収入を得ています。価格・ポイント倍率は{stamp}時点のもので、変わっている場合があります。購入前に必ず商品ページでご確認ください。<br>実質価格＝価格−獲得ポイント（通常1倍を1%として概算）。</p>
+{picks_html(picks)}
 {articles_html()}
 {''.join(sections)}
 <p class=meta>最終更新：{stamp}</p>
@@ -357,7 +387,7 @@ def main():
     out.write_text(("\n\n" + "-" * 30 + "\n\n").join(texts) + "\n", encoding="utf-8")
 
     results = price_watch(api, cfg, today)
-    render_site(cfg, results, stamp)
+    render_site(cfg, results, stamp, posts)
     queue = build_queue(posts, texts, today, results)
 
     lines = ["■ 最安値（実質価格）"]
