@@ -121,10 +121,13 @@ class Rakuten:
             "affiliate_rate": float(it.get("affiliateRate") or 0),
         }
 
-    def search_cheapest(self, keyword, min_price=None, max_price=None, hits=30, page=1, sort="+itemPrice", genre_id=None):
+    def search_cheapest(self, keyword, min_price=None, max_price=None, hits=30, page=1, sort="+itemPrice", genre_id=None,
+                        point_only=False):
         if self.mock:
             return _mock_search(keyword, min_price, max_price) if page == 1 else []
         params = {"sort": sort, "hits": hits, "availability": 1, "page": page}
+        if point_only:
+            params["pointRateFlag"] = 1   # ポイントアップ中の商品だけ
         if keyword:
             params["keyword"] = keyword
         if genre_id:
