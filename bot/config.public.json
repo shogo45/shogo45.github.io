@@ -1,0 +1,153 @@
+{
+ "_説明": "APP_ID / ACCESS_KEY / AFFILIATE_ID / REFERER は楽天ウェブサービスで取得して自分で書き換える",
+ "referer": "https://shogo45.github.io/",
+ "ranking_genres": [
+  {
+   "name": "パソコン・周辺機器",
+   "genre_id": 100026
+  },
+  {
+   "name": "家電",
+   "genre_id": 562637
+  },
+  {
+   "name": "美容・コスメ",
+   "genre_id": 100939
+  },
+  {
+   "name": "ダイエット・健康",
+   "genre_id": 100938
+  },
+  {
+   "name": "日用消耗品",
+   "genre_id": 568199
+  }
+ ],
+ "ranking_rules": {
+  "jump_threshold": 10,
+  "high_point_rate": 5,
+  "max_posts": 25
+ },
+ "watchlist": [
+  {
+   "name": "モバイルバッテリー 10000mAh",
+   "keyword": "モバイルバッテリー 10000mAh",
+   "min_price": 1500,
+   "max_price": 8000,
+   "ng_words": [
+    "ケース",
+    "中古",
+    "ジャンク"
+   ]
+  },
+  {
+   "name": "ワイヤレスイヤホン Anker",
+   "keyword": "Anker Soundcore イヤホン",
+   "min_price": 5000,
+   "max_price": 30000,
+   "ng_words": [
+    "のみ",
+    "イヤーパッド",
+    "イヤーピース",
+    "ケース",
+    "パッド",
+    "ヘッドフォン",
+    "ヘッドホン",
+    "中古",
+    "互換",
+    "交換用",
+    "充電ケース",
+    "右耳",
+    "左耳",
+    "片耳"
+   ]
+  },
+  {
+   "name": "USB-C 充電器 65W",
+   "keyword": "USB-C 充電器 65W GaN",
+   "min_price": 2000,
+   "max_price": 10000,
+   "ng_words": [
+    "ケーブルのみ",
+    "中古"
+   ]
+  },
+  {
+   "name": "化粧水",
+   "keyword": "",
+   "min_price": 800,
+   "max_price": 6000,
+   "min_reviews": 50,
+   "ng_words": [
+    "1回分",
+    "お試し",
+    "ケース",
+    "サンプル",
+    "トライアル",
+    "パウダー",
+    "パウチ",
+    "中古",
+    "業務用",
+    "空ボトル",
+    "空容器"
+   ],
+   "sort": "-reviewCount",
+   "genre_id": 216307
+  },
+  {
+   "name": "日焼け止め",
+   "keyword": "",
+   "min_price": 600,
+   "max_price": 5000,
+   "min_reviews": 50,
+   "ng_words": [
+    "お試し",
+    "アームカバー",
+    "ケース",
+    "サングラス",
+    "サンプル",
+    "トライアル",
+    "ネックカバー",
+    "パーカー",
+    "フェイスカバー",
+    "マスク",
+    "中古",
+    "帽子",
+    "手袋",
+    "日傘",
+    "業務用",
+    "空ボトル",
+    "空容器"
+   ],
+   "sort": "-reviewCount",
+   "genre_id": 503054
+  },
+  {
+   "name": "サプリ（マルチビタミン）",
+   "keyword": "",
+   "min_price": 500,
+   "max_price": 6000,
+   "min_reviews": 50,
+   "ng_words": [
+    "サンプル",
+    "お試し",
+    "トライアル",
+    "業務用",
+    "中古",
+    "空容器",
+    "空ボトル",
+    "ケース",
+    "ペット",
+    "犬",
+    "猫"
+   ],
+   "sort": "-reviewCount",
+   "genre_id": 567602
+  }
+ ],
+ "site_title": "楽天 最安値ウォッチ（ガジェット・美容・健康・日用品）",
+ "x_monthly_budget_usd": 0,
+ "amazon_tag": "shogo450e-22",
+ "post_mode": "api",
+ "api_start_date": "2026-09-27"
+}

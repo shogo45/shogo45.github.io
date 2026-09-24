@@ -1,0 +1,44 @@
+{
+ "モバイルバッテリー 10000mAh": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 1485,
+   "min_price": 1500
+  }
+ ],
+ "ワイヤレスイヤホン Anker": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 5148,
+   "min_price": 5200
+  }
+ ],
+ "USB-C 充電器 65W": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 1985,
+   "min_price": 2005
+  }
+ ],
+ "化粧水": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 1089,
+   "min_price": 1100
+  }
+ ],
+ "日焼け止め": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 1742,
+   "min_price": 1760
+  }
+ ],
+ "サプリ（マルチビタミン）": [
+  {
+   "date": "2026-09-24",
+   "min_effective": 881,
+   "min_price": 890
+  }
+ ]
+}
