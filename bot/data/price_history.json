@@ -95,15 +95,15 @@
  "洗濯洗剤 詰め替え": [
   {
    "date": "2026-09-25",
-   "min_effective": 926,
-   "min_price": 935
+   "min_effective": 1032,
+   "min_price": 1042
   }
  ],
  "柔軟剤 詰め替え": [
   {
    "date": "2026-09-25",
-   "min_effective": 926,
-   "min_price": 935
+   "min_effective": 1252,
+   "min_price": 1265
   }
  ],
  "トイレ用洗剤": [
