@@ -5,6 +5,13 @@ on:
     - cron: "17 1 * * 1"   # 毎週月曜 10:17 JST。Threadsのトークン（60日）を延長する
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-site
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -14,7 +21,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Load Threads token
+        env:
+          THREADS_KEY: ${{ secrets.THREADS_KEY }}
+          THREADS_TOKEN_SECRET: ${{ secrets.THREADS_TOKEN }}
+        run: bash bot/threads_token.sh
       - name: Refresh Threads token
         env:
-          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
+          THREADS_KEY: ${{ secrets.THREADS_KEY }}
         run: python bot/threads_refresh.py
+      - name: Save
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bot/data/threads_token.enc 2>/dev/null || true
+          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
+          git commit -qm "Threadsトークンを延長（暗号化して保存）"
+          git pull --rebase -q origin main
+          git push -q origin main

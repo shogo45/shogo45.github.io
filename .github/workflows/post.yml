@@ -33,12 +33,18 @@ jobs:
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
         run: python bot/post_bsky.py
 
+      - name: Load Threads token
+        if: always()
+        env:
+          THREADS_KEY: ${{ secrets.THREADS_KEY }}
+          THREADS_TOKEN_SECRET: ${{ secrets.THREADS_TOKEN }}
+        run: bash bot/threads_token.sh
+
       - name: Post to Threads
         if: always()
         env:
           TZ: Asia/Tokyo
           OUT_DIR: bot/out
-          THREADS_TOKEN: ${{ secrets.THREADS_TOKEN }}
         run: python bot/post_threads.py
 
       - name: Commit queue state
