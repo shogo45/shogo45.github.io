@@ -382,7 +382,8 @@ def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
             items += [it for it in batch
                       if not any(n in it["name"] for n in ng)
                       and it["review_count"] >= w.get("min_reviews", 10)
-                      and it["price"] <= MAX_PRICE and not was_shown(sh, it)]
+                      and it["price"] <= MAX_PRICE and not was_shown(sh, it)
+                      and (not w.get("must_words") or any(m in it["name"] for m in w["must_words"]))]   # 項目名と関係ない商品は出さない
             if len(items) >= 8 or len(batch) < 30:
                 break
         # ポイントアップ中の商品も追加で探す（倍率が高いほど実質価格が下がるので、最安の候補になりうる）
@@ -394,6 +395,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
         seen = {it["item_code"] for it in items}
         items += [it for it in extra if it["item_code"] not in seen
                   and it["price"] <= MAX_PRICE and not was_shown(sh, it)
+                  and (not w.get("must_words") or any(m in it["name"] for m in w["must_words"]))
                   and not any(n in it["name"] for n in ng)
                   and it["review_count"] >= w.get("min_reviews", 10)]
         for it in items:
@@ -559,7 +561,7 @@ def picks_html(picks):
                 f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
                 f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
                 f"<span class=go>楽天で見る →</span></a>")
-    return ("<section><h2>ポイント倍率が高い商品（楽天の人気商品から・更新のたびに入れ替え）</h2>"
+    return ("<section><h2>ポイント倍率が高い商品（楽天の人気商品から・毎朝入れ替え）</h2>"
             "<div class=cards>" + "".join(cards) + "</div></section>")
 
 

@@ -2,8 +2,7 @@ name: daily
 
 on:
   schedule:
-    # 1日4回（05:13・11:13・17:13・23:13 JST）価格とポイントを取り直す。GitHubの定時実行は1〜2時間遅れることがあるので、ちょうどの時刻は避ける
-    - cron: "13 20,2,8,14 * * *"
+    - cron: "13 20 * * *"   # 毎朝 05:13 JST（ユーザー指定「毎朝でいい」）。遅れや飛ばしに備えて、Macの 7時のタスクからも起動する
   workflow_dispatch:
 
 permissions:
@@ -54,5 +53,4 @@ jobs:
           git add -A
           if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
           git commit -qm "update $(date '+%Y-%m-%d %H:%M') (actions)"
-          git pull --rebase -q origin main
-          git push -q origin main
+          for i in 1 2 3; do git pull --rebase -X theirs -q origin main && git push -q origin main && exit 0; git rebase --abort 2>/dev/null || true; sleep 5; done; exit 1

@@ -37,5 +37,4 @@ jobs:
           git add bot/data/threads_token.enc 2>/dev/null || true
           if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
           git commit -qm "Threadsトークンを延長（暗号化して保存）"
-          git pull --rebase -q origin main
-          git push -q origin main
+          for i in 1 2 3; do git pull --rebase -X theirs -q origin main && git push -q origin main && exit 0; git rebase --abort 2>/dev/null || true; sleep 5; done; exit 1

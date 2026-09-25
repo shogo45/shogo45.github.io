@@ -57,5 +57,4 @@ jobs:
           git add bot/out
           if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
           git commit -qm "post $(date '+%Y-%m-%d %H:%M') (actions)"
-          git pull --rebase -q origin main
-          git push -q origin main
+          for i in 1 2 3; do git pull --rebase -X theirs -q origin main && git push -q origin main && exit 0; git rebase --abort 2>/dev/null || true; sleep 5; done; exit 1
