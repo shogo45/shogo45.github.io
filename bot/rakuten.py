@@ -84,10 +84,10 @@ class Rakuten:
                     continue
                 raise RuntimeError(f"楽天API {e.code}: {body}") from None
 
-    def ranking(self, genre_id):
+    def ranking(self, genre_id, page=1):
         if self.mock:
-            return _mock_ranking(genre_id)
-        data = self._get(RANKING_URL, {"genreId": genre_id})
+            return _mock_ranking(genre_id) if page == 1 else []
+        data = self._get(RANKING_URL, {"genreId": genre_id, "page": page})
         return [
             {
                 "rank": int(it["rank"]),

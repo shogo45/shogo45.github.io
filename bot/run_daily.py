@@ -26,6 +26,7 @@ DATA = Path(os.environ.get("DATA_DIR") or BASE / "data").resolve()
 OUT = Path(os.environ.get("OUT_DIR") or BASE / "out").resolve()
 SITE = Path(os.environ.get("SITE_DIR") or BASE / "site").resolve()
 HISTORY_DAYS = 90
+MAX_PRICE = 9999   # 1万円以上の商品は紹介しない（ユーザー指定）
 
 
 def load_json(path, default):
@@ -80,7 +81,7 @@ def ranking_digest(api, cfg, today):
                 reasons.append(f"💰 ポイント{it['point_rate']}倍")
             if first_run and rank <= 3:
                 reasons.append(f"👑 {g['name']}ランキング{rank}位")
-            if reasons:
+            if reasons and it["price"] <= MAX_PRICE:
                 posts.append({"genre": g["name"], "reasons": reasons, **it})
 
         save_json(snap_path, {"date": today, "items": items})
@@ -241,35 +242,89 @@ def dedupe_key(it):
     return n[:14]
 
 
-def price_watch(api, cfg, today, exclude=None):
-    """exclude：ほかの欄にすでに出している商品コード（項目をまたいだ重複を避ける）"""
+# ---- 一度サイトに出した商品は二度と出さない（ユーザー指定「ガラッと入れ替える」） ----
+def load_shown():
+    d = load_json(DATA / "shown_items.json", {})
+    return {"codes": d.get("codes", {}), "keys": d.get("keys", {})}
+
+
+def was_shown(sh, it):
+    return it["item_code"] in sh["codes"] or dedupe_key(it) in sh["keys"]
+
+
+def mark_shown(sh, items, today):
+    for it in items:
+        sh["codes"][it["item_code"]] = today
+        sh["keys"][dedupe_key(it)] = today
+
+
+def fresh_picks(api, cfg, posts, sh, per_genre=2):
+    """上の欄：ランキングを上から順に見て、まだ出していない1万円未満の商品をジャンルごとに集める（ポイント倍率が高い順に選ぶ）。"""
+    out = []
+    for g in cfg["ranking_genres"]:
+        cands, keys = [], set()
+        pool = [p for p in posts if p["genre"] == g["name"]]
+        for page in range(1, 11):
+            if page > 1:
+                try:
+                    pool = [{"genre": g["name"], **it} for it in api.ranking(g["genre_id"], page=page)]
+                except RuntimeError:
+                    break
+                if not pool:
+                    break
+            for it in pool:
+                k = dedupe_key(it)
+                if it["price"] > MAX_PRICE or it["review_count"] < 10 or was_shown(sh, it) or k in keys:
+                    continue
+                keys.add(k); cands.append(it)
+            if len(cands) >= per_genre * 4:
+                break
+        cands.sort(key=lambda p: (-p.get("point_rate", 1), -p.get("review_count", 0)))
+        out += cands[:per_genre]
+    return out
+
+
+def price_watch(api, cfg, today, exclude=None, sh=None):
+    """exclude：ほかの欄にすでに出している商品コード（項目をまたいだ重複を避ける）
+    sh：これまでに出した商品（出したものは除き、まだ出していない中で実質価格の安い順）"""
     shown = set(exclude or [])
+    sh = sh or {"codes": {}, "keys": {}}
     hist_path = DATA / "price_history.json"
     hist = load_json(hist_path, {})
     cutoff = (datetime.now() - timedelta(days=HISTORY_DAYS)).strftime("%Y-%m-%d")
     results = []
 
-    for w in todays_watchlist(cfg, today):
+    todays = todays_watchlist(cfg, today)
+    # 新しい商品が3件未満になった項目は出さず、控えのカテゴリ（watchlist_pool の残り）と入れ替える
+    backups = [w for w in cfg.get("watchlist_pool", []) if w not in todays]
+    start = datetime.strptime(today, "%Y-%m-%d").toordinal() % max(len(backups), 1)
+    backups = backups[start:] + backups[:start]
+    for w in todays + backups:
+        if len(results) >= len(todays):
+            break
         # 安い順の上位はアクセサリーで埋まりがちなので、除外後に5件そろうまで最大3ページ見る
         # 美容・健康のように種類が多いものは sort=-reviewCount（人気順）で取り、その中で実質価格の安い順に並べる
         ng = w.get("ng_words", [])
         items = []
-        for page in range(1, 4):
-            batch = api.search_cheapest(w["keyword"], w.get("min_price"), w.get("max_price"), page=page,
+        max_p = min(w.get("max_price") or MAX_PRICE, MAX_PRICE)
+        for page in range(1, 11):
+            batch = api.search_cheapest(w["keyword"], w.get("min_price"), max_p, page=page,
                                         sort=w.get("sort", "+itemPrice"), genre_id=w.get("genre_id"))
             items += [it for it in batch
                       if not any(n in it["name"] for n in ng)
-                      and it["review_count"] >= w.get("min_reviews", 0)]
-            if len(items) >= 5 or len(batch) < 30:
+                      and it["review_count"] >= w.get("min_reviews", 0)
+                      and it["price"] <= MAX_PRICE and not was_shown(sh, it)]
+            if len(items) >= 8 or len(batch) < 30:
                 break
         # ポイントアップ中の商品も追加で探す（倍率が高いほど実質価格が下がるので、最安の候補になりうる）
         try:
-            extra = api.search_cheapest(w["keyword"], w.get("min_price"), w.get("max_price"),
+            extra = api.search_cheapest(w["keyword"], w.get("min_price"), max_p,
                                         sort="-reviewCount", genre_id=w.get("genre_id"), point_only=True)
         except RuntimeError:
             extra = []
         seen = {it["item_code"] for it in items}
         items += [it for it in extra if it["item_code"] not in seen
+                  and it["price"] <= MAX_PRICE and not was_shown(sh, it)
                   and not any(n in it["name"] for n in ng)
                   and it["review_count"] >= w.get("min_reviews", 0)]
         for it in items:
@@ -288,6 +343,11 @@ def price_watch(api, cfg, today, exclude=None):
             if len(top) == 5:
                 break
 
+        if len(top) < 3:
+            print(f"   ・{w['name']}：まだ出していない商品が{len(top)}件なので、別のカテゴリに入れ替え")
+            for it in top:
+                shown.discard(it["item_code"])
+            continue
         h = [x for x in hist.get(w["name"], []) if x["date"] >= cutoff and x["date"] != today]
         if top:
             h.append({"date": today, "min_effective": top[0]["effective"], "min_price": min(i["price"] for i in top)})
@@ -348,7 +408,7 @@ def picks_html(picks):
                 f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
                 f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
                 f"<span class=go>楽天で見る →</span></a>")
-    return ("<section><h2>ポイント倍率が高い商品（楽天ランキングから・毎朝入れ替え）</h2>"
+    return ("<section><h2>ポイント倍率が高い商品（楽天ランキングから・更新のたびに入れ替え）</h2>"
             "<div class=cards>" + "".join(cards) + "</div></section>")
 
 
@@ -557,8 +617,12 @@ def main():
     out = OUT / f"posts_{today}.txt"
     out.write_text(("\n\n" + "-" * 30 + "\n\n").join(texts) + "\n", encoding="utf-8")
 
-    results = price_watch(api, cfg, today, exclude=[p["item_code"] for p in posts])
-    render_site(cfg, results, stamp, posts, kobo_section(api, cfg, today))
+    sh = load_shown()
+    picks = fresh_picks(api, cfg, posts, sh)
+    results = price_watch(api, cfg, today, exclude=[p["item_code"] for p in picks], sh=sh)
+    render_site(cfg, results, stamp, picks, kobo_section(api, cfg, today))
+    mark_shown(sh, picks + [it for r in results for it in r["items"]], today)
+    save_json(DATA / "shown_items.json", sh)
     queue = build_queue(posts, texts, today, results)
 
     lines = ["■ 最安値（実質価格）"]
