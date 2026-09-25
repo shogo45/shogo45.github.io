@@ -76,6 +76,11 @@
    "date": "2026-09-24",
    "min_effective": 574,
    "min_price": 580
+  },
+  {
+   "date": "2026-09-25",
+   "min_effective": 574,
+   "min_price": 580
   }
  ],
  "加湿器": [
@@ -83,12 +88,22 @@
    "date": "2026-09-24",
    "min_effective": 1904,
    "min_price": 2380
+  },
+  {
+   "date": "2026-09-25",
+   "min_effective": 1904,
+   "min_price": 2280
   }
  ],
  "ワイヤレスマウス": [
   {
    "date": "2026-09-24",
    "min_effective": 990,
+   "min_price": 1000
+  },
+  {
+   "date": "2026-09-25",
+   "min_effective": 930,
    "min_price": 1000
   }
  ],
@@ -132,6 +147,48 @@
    "date": "2026-09-25",
    "min_effective": 1267,
    "min_price": 1280
+  }
+ ],
+ "ボックスティッシュ": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 882,
+   "min_price": 891
+  }
+ ],
+ "トイレットペーパー": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 2951,
+   "min_price": 2981
+  }
+ ],
+ "ミネラルウォーター": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1940,
+   "min_price": 1960
+  }
+ ],
+ "無洗米": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1485,
+   "min_price": 1500
+  }
+ ],
+ "プロテイン": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 2958,
+   "min_price": 3480
+  }
+ ],
+ "シャンプー 詰め替え": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 673,
+   "min_price": 748
   }
  ]
 }
