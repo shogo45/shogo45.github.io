@@ -81,6 +81,11 @@
    "date": "2026-09-25",
    "min_effective": 574,
    "min_price": 580
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2455,
+   "min_price": 2480
   }
  ],
  "加湿器": [
@@ -93,6 +98,11 @@
    "date": "2026-09-25",
    "min_effective": 1904,
    "min_price": 2280
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2921,
+   "min_price": 2980
   }
  ],
  "ワイヤレスマウス": [
@@ -105,6 +115,11 @@
    "date": "2026-09-25",
    "min_effective": 930,
    "min_price": 1000
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 1971,
+   "min_price": 2190
   }
  ],
  "洗濯洗剤 詰め替え": [
@@ -182,6 +197,11 @@
    "date": "2026-09-25",
    "min_effective": 3445,
    "min_price": 3480
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 3910,
+   "min_price": 3950
   }
  ],
  "シャンプー 詰め替え": [
@@ -189,6 +209,11 @@
    "date": "2026-09-25",
    "min_effective": 2208,
    "min_price": 2230
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2803,
+   "min_price": 2860
   }
  ],
  "食器用洗剤 詰め替え": [
@@ -224,6 +249,11 @@
    "date": "2026-09-25",
    "min_effective": 260,
    "min_price": 263
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2059,
+   "min_price": 2080
   }
  ],
  "ゴミ袋": [
@@ -252,6 +282,11 @@
    "date": "2026-09-25",
    "min_effective": 1188,
    "min_price": 1200
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2008,
+   "min_price": 2028
   }
  ],
  "炭酸水": [
@@ -259,6 +294,11 @@
    "date": "2026-09-25",
    "min_effective": 1286,
    "min_price": 1420
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2154,
+   "min_price": 2176
   }
  ],
  "レトルトカレー": [
@@ -273,6 +313,11 @@
    "date": "2026-09-25",
    "min_effective": 742,
    "min_price": 750
+  },
+  {
+   "date": "2026-09-26",
+   "min_effective": 2177,
+   "min_price": 2199
   }
  ],
  "素焼きナッツ": [
