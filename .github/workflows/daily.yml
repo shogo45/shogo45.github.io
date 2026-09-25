@@ -2,7 +2,7 @@ name: daily
 
 on:
   schedule:
-    - cron: "30 22 * * *"   # 07:30 JST
+    - cron: "13 20 * * *"   # 05:13 JST（GitHubの定時実行は混雑で1〜2時間遅れるため早めに。ちょうどの時刻は特に遅れる）
   workflow_dispatch:
 
 permissions:

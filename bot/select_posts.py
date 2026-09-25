@@ -165,5 +165,14 @@ def build_queue(candidates, texts, today, results=None):
     queue += text_posts(candidates, results or [], today)
     queue += site_post(results or [], today)
     queue.sort(key=lambda q: q["time"])
+    # 同じ日に作り直しても、すでに投稿済みの枠は二重に出さない（投稿済みの印を引き継ぐ）
+    try:
+        done = {q["time"]: q for q in json.loads((OUT / f"queue_{today}.json").read_text(encoding="utf-8"))}
+    except (FileNotFoundError, json.JSONDecodeError):
+        done = {}
+    for q in queue:
+        for k in ("bsky", "posted"):
+            if done.get(q["time"], {}).get(k):
+                q[k] = done[q["time"]][k]
     (OUT / f"queue_{today}.json").write_text(json.dumps(queue, ensure_ascii=False, indent=1), encoding="utf-8")
     return queue
