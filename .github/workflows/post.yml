@@ -6,18 +6,22 @@ on:
     # 7〜23時のあいだ30分おきに起動し、時刻が来た未投稿の枠を出す（post_bsky.py が判定。出す枠がなければ何もしない）
     - cron: "7,37 22,23,0-14 * * *"
   workflow_dispatch:
+    inputs:
+      hours:
+        description: "この時間（時間）のあいだ5分おきに見て、時刻が来た投稿を出し続ける（0なら1回だけ）"
+        default: "0"
 
 permissions:
   contents: write
 
 concurrency:
-  group: daily-site   # daily.yml と同じ。push がぶつからないよう順番に実行
+  group: post   # 投稿は1つずつ（二重投稿は claim.py の先取りでも防ぐ）
   cancel-in-progress: false
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
 
@@ -25,36 +29,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Post to Bluesky
-        env:
-          TZ: Asia/Tokyo
-          OUT_DIR: bot/out
-          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
-          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
-        run: python bot/post_bsky.py
-
       - name: Load Threads token
-        if: always()
         env:
           THREADS_KEY: ${{ secrets.THREADS_KEY }}
           THREADS_TOKEN_SECRET: ${{ secrets.THREADS_TOKEN }}
         run: bash bot/threads_token.sh
 
-      - name: Post to Threads
-        if: always()
+      - name: Post (Bluesky / Threads)
         env:
           TZ: Asia/Tokyo
           OUT_DIR: bot/out
-        run: python bot/post_threads.py
-
-      - name: Commit queue state
-        if: always()
-        env:
-          TZ: Asia/Tokyo
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bot/out
-          if git diff --cached --quiet; then echo "変更なし"; exit 0; fi
-          git commit -qm "post $(date '+%Y-%m-%d %H:%M') (actions)"
-          for i in 1 2 3; do git pull --rebase -X theirs -q origin main && git push -q origin main && exit 0; git rebase --abort 2>/dev/null || true; sleep 5; done; exit 1
+          HOURS: ${{ github.event.inputs.hours || '0' }}
+          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+        run: bash bot/post_loop.sh
