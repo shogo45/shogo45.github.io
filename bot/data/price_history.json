@@ -190,5 +190,68 @@
    "min_effective": 673,
    "min_price": 748
   }
+ ],
+ "食器用洗剤 詰め替え": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1653,
+   "min_price": 1670
+  }
+ ],
+ "ハンドソープ 詰め替え": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 990,
+   "min_price": 1000
+  }
+ ],
+ "ボディソープ 詰め替え": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 715,
+   "min_price": 722
+  }
+ ],
+ "歯磨き粉": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1067,
+   "min_price": 1078
+  }
+ ],
+ "不織布マスク": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 260,
+   "min_price": 263
+  }
+ ],
+ "ゴミ袋": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 563,
+   "min_price": 569
+  }
+ ],
+ "入浴剤": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 346,
+   "min_price": 350
+  }
+ ],
+ "ドリップコーヒー": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 3315,
+   "min_price": 3348
+  }
+ ],
+ "緑茶ティーバッグ": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 742,
+   "min_price": 750
+  }
  ]
 }
