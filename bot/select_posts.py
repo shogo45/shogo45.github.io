@@ -26,7 +26,7 @@ SLOTS = ["21:00", "22:30"]   # 商品リンク投稿（最後の行に単独で�
 SITE_SLOT = "12:10"           # 昼は商品を名指ししない「サイト更新」投稿（自分の最安値ページへ誘導。ページ冒頭にPR表記あり）
 SITE_URL = "https://totalyamanote.github.io/"
 REPEAT_GENRES = {"日用消耗品", "美容・コスメ", "ダイエット・健康"}
-NO_REPEAT_DAYS = 14   # 同じ商品は2週間は投稿しない
+NO_REPEAT_DAYS = 36500   # 一度投稿した商品は二度と投稿しない（2026-09-25 ユーザー指定）
 
 
 def score(c):
@@ -163,7 +163,7 @@ def build_queue(candidates, texts, today, results=None):
               "text": by_code[c["item_code"]], "has_link": True, "posted": False}
              for t, c in zip(slots, chosen)]
     queue += text_posts(candidates, results or [], today)
-    queue += site_post(results or [], today)
+    # サイト紹介の投稿は毎日ほぼ同じ文になるので出さない（同じ内容を二度使わない）
     queue.sort(key=lambda q: q["time"])
     # 同じ日に作り直しても、すでに投稿済みの枠は二重に出さない（投稿済みの印を引き継ぐ）
     try:
