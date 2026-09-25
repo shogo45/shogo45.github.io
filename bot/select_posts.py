@@ -22,7 +22,7 @@ OUT = Path(os.environ.get("OUT_DIR") or BASE / "out").resolve()
 DATA = Path(os.environ.get("DATA_DIR") or BASE / "data").resolve()
 
 # 調査（research/tactics.md）より：主戦場は21:00〜22:30、補助で昼。投稿間隔は90分以上
-SLOTS = ["21:00", "22:30"]   # 商品リンク投稿（最後の行に単独で「【PR】楽天アフィリエイト」）
+SLOTS = ["21:00", "22:30"]   # 商品リンク投稿（最後の行に単独で「【PR】」）
 SITE_SLOT = "12:10"           # 昼は商品を名指ししない「サイト更新」投稿（自分の最安値ページへ誘導。ページ冒頭にPR表記あり）
 SITE_URL = "https://totalyamanote.github.io/"
 REPEAT_GENRES = {"日用消耗品", "美容・コスメ", "ダイエット・健康"}

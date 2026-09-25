@@ -167,7 +167,7 @@ def _comment(p):
 
 def compose_post(p, stamp):
     """事実＋ひとこと＋締め切り＋ハッシュタグ。自分で使った体験は書かない。
-    広告表示は最後の行に単独で「【PR】楽天アフィリエイト」（2026-09-25 ユーザー指定。ハッシュタグとは別の行＝ステマ規制で埋もれさせない）。"""
+    広告表示は最後の行に単独で「【PR】」（2026-09-25 ユーザー指定。ハッシュタグとは別の行＝ステマ規制で埋もれさせない）。"""
     short_stamp = datetime.strptime(stamp, "%Y/%m/%d %H:%M").strftime("%-m/%-d %H:%M")
     deadline = ""
     if p.get("point_end") and p["point_rate"] >= 2:
@@ -181,7 +181,7 @@ def compose_post(p, stamp):
     lines = [_hook(p), "", _comment(p), "",
              *( [deadline] if deadline else [] ),
              f"{short_name(p['name'], 30)} ¥{p['price']:,}{ship}",
-             p["url"], tags, f"※{short_stamp}時点", "【PR】楽天アフィリエイト"]
+             p["url"], tags, f"※{short_stamp}時点", "【PR】"]
     text = "\n".join(lines)
     i = lines.index(p["url"]) - 1
     for limit in (24, 18, 12, 8):   # 商品名を段階的に短くする（必ず終わる）
