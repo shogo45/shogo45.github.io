@@ -171,7 +171,7 @@ def build_queue(candidates, texts, today, results=None):
     except (FileNotFoundError, json.JSONDecodeError):
         done = {}
     for q in queue:
-        for k in ("bsky", "posted"):
+        for k in ("bsky", "threads", "posted"):
             if done.get(q["time"], {}).get(k):
                 q[k] = done[q["time"]][k]
     (OUT / f"queue_{today}.json").write_text(json.dumps(queue, ensure_ascii=False, indent=1), encoding="utf-8")
