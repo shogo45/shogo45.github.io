@@ -425,7 +425,8 @@
     "genre_id": "101904",
     "hits": 10
   },
-  "kobo_sections": [
+  "kobo_sections": [],
+  "kobo_sections_off": [
     {
       "name": "自己成長",
       "genres": [
