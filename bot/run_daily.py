@@ -269,28 +269,59 @@ def mark_shown(sh, items, today):
 
 
 def fresh_picks(api, cfg, posts, sh, per_genre=2):
-    """上の欄：ランキングを上から順に見て、まだ出していない1万円未満の商品をジャンルごとに集める（ポイント倍率が高い順に選ぶ）。"""
-    out = []
+    """上の欄：まだ出していない1万円未満で、ポイント2倍以上の商品だけをジャンルごとに集める（1倍は出さない＝ユーザー指定）。
+    ランキングを上から見て、足りなければポイントアップ中の商品検索（pointRateFlag=1）で補う。
+    ランキングの倍率は古いことがあるので、選んだ商品は検索APIで倍率を取り直して確かめる。"""
+    out, heads = [], set()   # heads：商品名の最初の語（同じ商品の別ショップ出品を、ジャンルをまたいで1つにする）
     for g in cfg["ranking_genres"]:
         cands, keys = [], set()
-        pool = [p for p in posts if p["genre"] == g["name"]]
-        for page in range(1, 11):
-            if page > 1:
-                try:
-                    pool = [{"genre": g["name"], **it} for it in api.ranking(g["genre_id"], page=page)]
-                except RuntimeError:
-                    break
-                if not pool:
-                    break
+
+        def take(pool):
             for it in pool:
                 k = dedupe_key(it)
-                if it["price"] > MAX_PRICE or it["review_count"] < 10 or was_shown(sh, it) or k in keys:
+                w = (short_name(it["name"], 80).split() or [""])[0]
+                if (it["price"] > MAX_PRICE or it["review_count"] < 10 or it.get("point_rate", 1) < 2
+                        or was_shown(sh, it) or k in keys or (len(w) >= 4 and w in heads)):
                     continue
-                keys.add(k); cands.append(it)
-            if len(cands) >= per_genre * 4:
+                keys.add(k); cands.append({"genre": g["name"], "_head": w, **it})
+
+        for page in range(1, 11):
+            try:
+                pool = api.ranking(g["genre_id"], page=page)
+            except RuntimeError:
+                break
+            if not pool:
+                break
+            take(pool)
+            if len(cands) >= per_genre * 3:
+                break
+        for page in range(1, 4):
+            if len(cands) >= per_genre * 3:
+                break
+            try:
+                take(api.search_cheapest(None, None, MAX_PRICE, page=page, sort="-reviewCount",
+                                         genre_id=g["genre_id"], point_only=True))
+            except RuntimeError:
                 break
         cands.sort(key=lambda p: (-p.get("point_rate", 1), -p.get("review_count", 0)))
-        out += cands[:per_genre]
+        chosen = []
+        for c in cands:
+            d = api.item_detail(c["item_code"])
+            if d:
+                try:
+                    if d["point_end"] and datetime.strptime(d["point_end"][:16], "%Y-%m-%d %H:%M") < datetime.now():
+                        d["point_rate"] = 1
+                except ValueError:
+                    pass
+                c.update(price=d["price"], point_rate=d["point_rate"])
+            if c["point_rate"] < 2 or c["price"] > MAX_PRICE:
+                continue
+            if len(c["_head"]) >= 4 and c["_head"] in heads:
+                continue
+            heads.add(c["_head"]); chosen.append(c)
+            if len(chosen) == per_genre:
+                break
+        out += chosen
     return out
 
 
@@ -412,13 +443,13 @@ def picks_html(picks):
             img = badge + (f"<img src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "<div class=noimg>No Image</div>")
             cards.append(
                 f"<a class=card href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
-                f"<span class=gtag>{esc(g)}・{it['rank']}位</span>{img}"
+                f"<span class=gtag>{esc(g)}" + (f"・{it['rank']}位" if it.get("rank") else "") + f"</span>{img}"
                 f"<span class=nm>{esc(short_name(it['name'], 40))}</span>"
                 f"<span class=yen>¥{it['price']:,}</span>"
                 f"<span class=pts>ポイント{it.get('point_rate', 1)}倍（{it['price'] * it.get('point_rate', 1) // 100:,}pt）</span>"
                 f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
                 f"<span class=go>楽天で見る →</span></a>")
-    return ("<section><h2>ポイント倍率が高い商品（楽天ランキングから・更新のたびに入れ替え）</h2>"
+    return ("<section><h2>ポイント倍率が高い商品（楽天の人気商品から・更新のたびに入れ替え）</h2>"
             "<div class=cards>" + "".join(cards) + "</div></section>")
 
 
@@ -531,16 +562,18 @@ def render_site(cfg, results, stamp, picks=None, books_html=""):
     for r in results:
         rows = []
         for i, it in enumerate(r["items"], 1):
-            hot = " hotpt" if it["point_rate"] >= 5 else ""
-            pt = (f"<span class='pt{hot}'>{'🔥' if hot else ''}ポイント{it['point_rate']}倍<br>{it['price'] * it['point_rate'] // 100:,}pt</span>")
+            # 上の欄と同じ、画像中心のカード
+            badge = f"<span class=hot>🔥ポイント{it['point_rate']}倍</span>" if it["point_rate"] >= 2 else ""
+            img = badge + (f"<img src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "<div class=noimg>No Image</div>")
             rows.append(
-                f"<tr>"
-                f"<td><a class=row href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
-                + (f"<img class=th src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "")
-                + f"<span>{esc(short_name(it['name'], 60))}</span></a>"
-                f"<div class=shop>{esc(it['shop'])}・⭐{it['review_avg']}（{it['review_count']}件）</div></td>"
-                f"<td class=num>¥{it['price']:,}{pt}</td><td class='num eff'>¥{it['effective']:,}</td></tr>"
-            )
+                f"<a class=card href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>"
+                f"<span class=gtag>実質最安{i}位</span>{img}"
+                f"<span class=nm>{esc(short_name(it['name'], 40))}</span>"
+                f"<span class=yen>¥{it['price']:,}</span>"
+                f"<span class=pts>ポイント{it['point_rate']}倍（{it['price'] * it['point_rate'] // 100:,}pt）</span>"
+                f"<span class=eff2>実質¥{it['effective']:,}</span>"
+                f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
+                f"<span class=go>楽天で見る →</span></a>")
         badge = ""
         low = f"直近30日の実質最安：¥{r['low_30']:,}" if r["low_30"] else ""
         amz = ""
@@ -550,8 +583,7 @@ def render_site(cfg, results, stamp, picks=None, books_html=""):
                    f"rel='sponsored nofollow noopener' target=_blank>Amazonで「{esc(r['name'])}」を見る →</a></p>")
         sections.append(
             f"<section><h2>{esc(r['name'])}の実質最安 {badge}</h2><p class=meta>{low}</p>{amz}"
-            f"<div class=scroll><table><thead><tr><th></th><th>価格</th><th>実質</th></tr></thead>"
-            f"<tbody>{''.join(rows) or '<tr><td colspan=3>該当なし</td></tr>'}</tbody></table></div></section>"
+            f"<div class=cards>{''.join(rows) or '<p class=meta>該当なし</p>'}</div></section>"
         )
 
     page = f"""<!doctype html><html lang=ja><head><meta charset=utf-8>
@@ -578,7 +610,8 @@ th,td{{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;verti
 .card img.book{{aspect-ratio:3/4}}
 .noimg{{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f3f3f3;color:#999;border-radius:8px;font-size:12px}}
 .card{{position:relative}} .hot{{position:absolute;top:34px;left:14px;background:#e11d48;color:#fff;font-weight:800;font-size:12px;padding:3px 8px;border-radius:999px;box-shadow:0 2px 4px rgba(0,0,0,.2)}}
-.pts{{font-size:12px;font-weight:700;color:#e11d48}}
+.pts{{font-size:12px;font-weight:700;color:#e11d48}} .eff2{{font-size:13px;font-weight:800;color:var(--fg);background:#fef3c7;border-radius:6px;padding:1px 6px;align-self:flex-start}}
+@media (prefers-color-scheme:dark){{.eff2{{background:#78350f}}}}
 .hotpt{{font-weight:800;background:#ffe4e6;border-radius:6px;padding:2px 4px}}
 .gtag{{font-size:11px;color:var(--mut)}}
 .ic{{font-size:64px;text-align:center;line-height:1.3;background:#fff7ed;border-radius:8px;padding:10px 0}}
