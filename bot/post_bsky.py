@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 import bsky
+from claim import claim
 
 OUT = Path(os.environ.get("OUT_DIR") or Path(__file__).resolve().parent / "out").resolve()
 
@@ -29,6 +30,10 @@ def main():
         old["bsky"] = "skipped"
     q = due[-1]
     code = 0
+    q["bsky"] = "posting"
+    qpath.write_text(json.dumps(queue, ensure_ascii=False, indent=1), encoding="utf-8")
+    if not claim(qpath, f"Bluesky 投稿中 {q['time']}"):
+        print("ほかの実行が先に投稿中なので、この実行は投稿しない"); return 0
     try:
         q["bsky"] = bsky.post(q["text"], os.environ["BSKY_HANDLE"], os.environ["BSKY_APP_PASSWORD"])
         print(f"✅ Bluesky {q['time']} {q['bsky']}")

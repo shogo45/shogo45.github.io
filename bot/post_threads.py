@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import threads
+from claim import claim
 
 OUT = Path(os.environ.get("OUT_DIR") or Path(__file__).resolve().parent / "out").resolve()
 
@@ -40,6 +41,10 @@ def main():
         q["threads"] = "skipped"
         print(f"時刻を6時間以上過ぎたので出さない {q['at']}")
     else:
+        q["threads"] = "posting"
+        qpath.write_text(json.dumps(queue, ensure_ascii=False, indent=1), encoding="utf-8")
+        if not claim(qpath, f"Threads 投稿中 {q['at']}"):
+            print("ほかの実行が先に投稿中なので、この実行は投稿しない"); return 0
         try:
             q["threads"] = threads.post(q["text"], os.environ["THREADS_TOKEN"])
             print(f"✅ Threads {q['at']} {q['threads']}")
