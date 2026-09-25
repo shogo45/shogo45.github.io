@@ -352,6 +352,15 @@ def fresh_picks(api, cfg, posts, sh, per_genre=2):
     return out
 
 
+def relevant(it, w):
+    """項目名と関係ある商品か。検索用に語を詰め込んだ商品名が多いので、商品名の頭（30字）に必須語があるかで見る。"""
+    must = w.get("must_words")
+    if not must:
+        return True
+    head = short_name(it["name"], 80)[:30]
+    return any(m in head for m in must)
+
+
 def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
     """exclude：ほかの欄にすでに出している商品コード（項目をまたいだ重複を避ける）
     sh：これまでに出した商品（出したものは除き、まだ出していない中で実質価格の安い順）"""
@@ -383,7 +392,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
                       if not any(n in it["name"] for n in ng)
                       and it["review_count"] >= w.get("min_reviews", 10)
                       and it["price"] <= MAX_PRICE and not was_shown(sh, it)
-                      and (not w.get("must_words") or any(m in it["name"] for m in w["must_words"]))]   # 項目名と関係ない商品は出さない
+                      and relevant(it, w)]   # 項目名と関係ない商品は出さない
             if len(items) >= 8 or len(batch) < 30:
                 break
         # ポイントアップ中の商品も追加で探す（倍率が高いほど実質価格が下がるので、最安の候補になりうる）
@@ -395,7 +404,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
         seen = {it["item_code"] for it in items}
         items += [it for it in extra if it["item_code"] not in seen
                   and it["price"] <= MAX_PRICE and not was_shown(sh, it)
-                  and (not w.get("must_words") or any(m in it["name"] for m in w["must_words"]))
+                  and relevant(it, w)
                   and not any(n in it["name"] for n in ng)
                   and it["review_count"] >= w.get("min_reviews", 10)]
         for it in items:
