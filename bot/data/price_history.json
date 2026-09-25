@@ -112,5 +112,26 @@
    "min_effective": 213,
    "min_price": 215
   }
+ ],
+ "スマホスタンド": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 810,
+   "min_price": 850
+  }
+ ],
+ "LEDデスクライト": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1069,
+   "min_price": 1080
+  }
+ ],
+ "電気毛布": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1267,
+   "min_price": 1280
+  }
  ]
 }
