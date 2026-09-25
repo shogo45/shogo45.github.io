@@ -31,14 +31,14 @@ def main():
     due = [q for q in queue if not q.get("threads") and datetime.strptime(q["at"], "%Y-%m-%d %H:%M") <= now]
     if not due:
         print("投稿する枠はありません"); return 0
-    stale = now - timedelta(hours=3)
+    stale = now - timedelta(hours=6)   # 定時実行が遅れても、6時間以内なら出す
     for q in due[:-1]:
         q["threads"] = "skipped"
     q = due[-1]
     code = 0
     if datetime.strptime(q["at"], "%Y-%m-%d %H:%M") < stale:
         q["threads"] = "skipped"
-        print(f"時刻を3時間以上過ぎたので出さない {q['at']}")
+        print(f"時刻を6時間以上過ぎたので出さない {q['at']}")
     else:
         try:
             q["threads"] = threads.post(q["text"], os.environ["THREADS_TOKEN"])
