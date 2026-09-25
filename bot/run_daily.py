@@ -154,7 +154,7 @@ def _comment(p):
                 else "消耗品なら、倍率が高いうちにストックしておくのもあり。" if consumable
                 else "買い替えを考えてた人は、倍率が高いうちにチェックを。")
         return ["消耗品や買い替え予定のものは、ポイント高い日にまとめるのが一番おトク。",
-                f"実質{price * (100 - p['point_rate']) // 100:,}円くらいの計算。",
+                "楽天カード払いやお買い物マラソンの買いまわりで、ポイントはさらに上乗せできます。",
                 last][pick]
     if p["review_count"] >= 1000:
         return ["これだけレビューが集まってると、ハズレにくいのはありがたい。",
@@ -178,7 +178,14 @@ def compose_post(p, stamp):
             pass
     ship = " 送料無料" if p.get("postage_free") else ""
     tags = f"#楽天 {GENRE_TAGS.get(p.get('genre'), '#楽天市場')}"
+    merits = []   # 買う人のメリットになる事実（APIの数字だけ。推測は書かない）
+    if p.get("review_count"):
+        merits.append(f"⭐{p.get('review_avg', 0)}（レビュー{p['review_count']:,}件）")
+    if p.get("point_rate", 1) >= 2:
+        pts = p["price"] * p["point_rate"] // 100
+        merits.append(f"💰約{pts:,}ポイント還元（{p['point_rate']}倍）→ 実質¥{p['price'] - pts:,}")
     lines = [_hook(p), "", _comment(p), "",
+             *merits,
              *( [deadline] if deadline else [] ),
              f"{short_name(p['name'], 30)} ¥{p['price']:,}{ship}",
              p["url"], tags, f"※{short_stamp}時点", "【PR】"]
