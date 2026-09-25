@@ -64,7 +64,7 @@ def fit(text, limit=300):
     lines = [l for l in text.split("\n") if not TAG_RE.match(l.strip())]
     while len("\n".join(lines)) > limit:
         over = len("\n".join(lines)) - limit
-        i = max(i for i, l in enumerate(lines) if l.strip() and not URL_RE.search(l) and "【PR】" not in l and "−PR" not in l)   # PR表示は削らない
+        i = max(i for i, l in enumerate(lines) if l.strip() and not URL_RE.search(l) and "【PR】" not in l)   # PR表示は削らない
         lines[i] = lines[i][:-(over + 1)] + "…" if len(lines[i]) > over + 1 else ""
         lines = [l for j, l in enumerate(lines) if l or j != i]
     return "\n".join(lines)

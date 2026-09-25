@@ -1,7 +1,7 @@
 """「PRっぽくない構成」でN日分のX投稿を作る（Chromeでまとめて予約する用）。
 
 1日4件：07:40 暮らしのコツ／12:10 買い物のコツ（どちらもリンクなし・PRなし）
-        18:30 体験ベースの記事紹介（自サイトの記事へ）／21:00 セールの目玉（楽天リンク）。どちらも1行目の末尾に −PR
+        18:30 体験ベースの記事紹介（自サイトの記事へ）／21:00 セールの目玉（楽天リンク）。どちらも最後の行に単独で【PR】
 体験は data/articles.json（本人の言葉）だけを使う。倍率は予約時刻に有効なものだけ書く。
 """
 import json
@@ -47,13 +47,13 @@ def main(start, days):
         batch.append({"at": f"{d} 12:10", "kind": "tip", "text": SHOPPING_TIPS[i % len(SHOPPING_TIPS)]})
         if i % 2 == 0:
             a = arts[(i // 2) % len(arts)]
-            text = f"{a['hook']} −PR\n\n{a['body']}\n\n比較記事にまとめました👇\n{SITE}articles/{a['file']}\n{a['tag']}"
+            text = f"{a['hook']}\n\n{a['body']}\n\n比較記事にまとめました👇\n{SITE}articles/{a['file']}\n{a['tag']}\n【PR】"
         else:
-            v = [("楽天の人気商品を「価格−ポイント＝実質価格」で毎朝並べ直してます −PR\n\n"
+            v = [("楽天の人気商品を「価格−ポイント＝実質価格」で毎朝並べ直してます。\n\n"
                   "モバイルバッテリー、化粧水、日焼け止め、サプリなど。買う前にどうぞ👇\n"),
-                 ("楽天で買う前に「実質いくらか」だけ確認できるページを作りました −PR\n\n"
+                 ("楽天で買う前に「実質いくらか」だけ確認できるページを作りました。\n\n"
                   "ポイント込みの最安を毎朝自動で更新してます。日用品のまとめ買い前にどうぞ👇\n")][(i // 2) % 2]
-            text = v + SITE
+            text = v + SITE + "\n【PR】"
         batch.append({"at": f"{d} 18:30", "kind": "article", "text": text})
         at = datetime.strptime(f"{d} 21:00", "%Y-%m-%d %H:%M")
         amz_items = [x for a in arts for x in a.get("amazon", [])]
@@ -62,7 +62,7 @@ def main(start, days):
             x = amz_items[((start.toordinal() + i) // 2) % len(amz_items)]
             url = f"https://www.amazon.co.jp/s?k={urllib.parse.quote(x['kw'])}&tag={cfg['amazon_tag']}"
             batch.append({"at": f"{d} 21:00", "kind": "amazon",
-                          "text": f"{x['hook']} −PR\n\n{x['body']}\n\nAmazonはこちら👇\n{url}\n#Amazon"})
+                          "text": f"{x['hook']}\n\n{x['body']}\n\nAmazonはこちら👇\n{url}\n#Amazon\n【PR】"})
             continue
         for c in pool:
             end = datetime.strptime(c["point_end"][:16], "%Y-%m-%d %H:%M")
