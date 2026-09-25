@@ -381,7 +381,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
             if it["item_code"] in shown or k in keys or k2 in keys or k3 in keys:
                 continue
             keys.update([k, k2, k3]); shown.add(it["item_code"]); top.append(it)
-            if len(top) == 5:
+            if len(top) == 4:   # 4件（パソコン4列・スマホ2列でちょうど並ぶ）
                 break
 
         if len(top) < 3:
