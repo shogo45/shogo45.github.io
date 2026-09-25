@@ -178,26 +178,24 @@ def compose_post(p, stamp):
             pass
     ship = " 送料無料" if p.get("postage_free") else ""
     tags = f"#楽天 {GENRE_TAGS.get(p.get('genre'), '#楽天市場')}"
-    merits = []   # 買う人のメリットになる事実（APIの数字だけ。推測は書かない）
-    if p.get("review_count"):
-        merits.append(f"⭐{p.get('review_avg', 0)}（レビュー{p['review_count']:,}件）")
-    if p.get("point_rate", 1) >= 2:
-        pts = p["price"] * p["point_rate"] // 100
-        merits.append(f"💰約{pts:,}ポイント還元（{p['point_rate']}倍）→ 実質¥{p['price'] - pts:,}")
-    lines = [_hook(p), "", _comment(p), "",
-             *merits,
-             *( [deadline] if deadline else [] ),
-             f"{short_name(p['name'], 30)} ¥{p['price']:,}{ship}",
+    # うちの強み＝実質価格（価格−ポイント）。価格・ポイント・実質価格を必ず書き、実質価格をいちばん目立たせる（2026-09-25 ユーザー指定）
+    rate = p.get("point_rate", 1) or 1
+    pts = p["price"] * rate // 100
+    price_block = [f"✅実質¥{p['price'] - pts:,}",
+                   f"（価格¥{p['price']:,} − {pts:,}pt／ポイント{rate}倍{'・送料無料' if ship else ''}）"]
+    review = f"⭐{p.get('review_avg', 0)}（レビュー{p['review_count']:,}件）" if p.get("review_count") else ""
+    lines = [_hook(p), "", *price_block, *( [deadline] if deadline else [] ), "",
+             short_name(p["name"], 30), *( [review] if review else [] ),
              p["url"], tags, f"※{short_stamp}時点", "【PR】"]
     text = "\n".join(lines)
-    i = lines.index(p["url"]) - 1
+    i = lines.index(short_name(p["name"], 30))
     for limit in (24, 18, 12, 8):   # 商品名を段階的に短くする（必ず終わる）
         if x_weight(text) <= 280:
             break
-        lines[i] = short_name(p["name"], limit) + f" ¥{p['price']:,}{ship}"
+        lines[i] = short_name(p["name"], limit)
         text = "\n".join(lines)
-    if x_weight(text) > 280:
-        lines.pop(2); lines.pop(2)   # ひとことを落とす
+    if x_weight(text) > 280 and review:
+        lines.remove(review)
         text = "\n".join(lines)
     return text
 
