@@ -250,8 +250,64 @@
  "緑茶ティーバッグ": [
   {
    "date": "2026-09-25",
+   "min_effective": 1188,
+   "min_price": 1200
+  }
+ ],
+ "炭酸水": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1286,
+   "min_price": 1420
+  }
+ ],
+ "レトルトカレー": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 426,
+   "min_price": 430
+  }
+ ],
+ "オートミール": [
+  {
+   "date": "2026-09-25",
    "min_effective": 742,
    "min_price": 750
+  }
+ ],
+ "素焼きナッツ": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1069,
+   "min_price": 1080
+  }
+ ],
+ "ヘアオイル": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 624,
+   "min_price": 630
+  }
+ ],
+ "洗顔フォーム": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 989,
+   "min_price": 999
+  }
+ ],
+ "ハンドクリーム": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 644,
+   "min_price": 650
+  }
+ ],
+ "フェイスタオル": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 931,
+   "min_price": 990
   }
  ]
 }
