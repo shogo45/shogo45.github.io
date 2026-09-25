@@ -26,7 +26,10 @@ DATA = Path(os.environ.get("DATA_DIR") or BASE / "data").resolve()
 OUT = Path(os.environ.get("OUT_DIR") or BASE / "out").resolve()
 SITE = Path(os.environ.get("SITE_DIR") or BASE / "site").resolve()
 HISTORY_DAYS = 90
-MAX_PRICE = 9999   # 1万円以上の商品は紹介しない（ユーザー指定）
+MIN_PRICE = 2000   # 安っぽい雑貨は出さない（ユーザー指定 2026-09-25：2,000〜5,000円の商品を載せる）
+MAX_PRICE = 5000   # 商品は5,000円まで（ふるさと納税・ホテルは FURUSATO_MAX / HOTEL_MAX）
+FURUSATO_MAX = 9999
+HOTEL_MAX = 9999
 
 
 def load_json(path, default):
@@ -44,6 +47,8 @@ def short_name(name, limit=38):
     # 楽天の商品名は【】や送料無料などの宣伝文句が長いので落とす
     s = re.sub(r"【[^】]*】|\[[^\]]*\]|＼[^／]*／|★|☆|◆|♪", " ", name)
     s = re.sub(r"(送料無料|ポイント\d+倍|楽天\d+位|あす楽|クーポン\S*|P\d+倍)", " ", s)
+    # 宣伝の語（期限・倍率・割引・限定など）を含む語は落とす（商品名だけ残す）
+    s = " ".join(w for w in s.split() if not re.search(r"マデ|まで|迄|限定|OFF|off|%|％|倍|クーポン|セール|SALE|送料|ランキング|位|受賞|獲得|特典|お買い物マラソン|\d+日|\d+:\d+|^[+＋]", w))
     s = re.sub(r"\s+", " ", s).strip()
     return s if len(s) <= limit else s[:limit - 1] + "…"
 
@@ -81,7 +86,7 @@ def ranking_digest(api, cfg, today):
                 reasons.append(f"💰 ポイント{it['point_rate']}倍")
             if first_run and rank <= 3:
                 reasons.append(f"👑 {g['name']}ランキング{rank}位")
-            if reasons and it["price"] <= MAX_PRICE:
+            if reasons and MIN_PRICE <= it["price"] <= MAX_PRICE:
                 posts.append({"genre": g["name"], "reasons": reasons, **it})
 
         save_json(snap_path, {"date": today, "items": items})
@@ -307,7 +312,7 @@ def fresh_picks(api, cfg, posts, sh, per_genre=2):
             for it in pool:
                 k = dedupe_key(it)
                 w = (short_name(it["name"], 80).split() or [""])[0]
-                if (it["price"] > MAX_PRICE or it["review_count"] < 10 or it.get("point_rate", 1) < 2
+                if (not MIN_PRICE <= it["price"] <= MAX_PRICE or it["review_count"] < 30 or it.get("point_rate", 1) < 2
                         or was_shown(sh, it) or k in keys or (len(w) >= 4 and w in heads)):
                     continue
                 keys.add(k); cands.append({"genre": g["name"], "_head": w, **it})
@@ -326,7 +331,7 @@ def fresh_picks(api, cfg, posts, sh, per_genre=2):
             if len(cands) >= per_genre * 3:
                 break
             try:
-                take(api.search_cheapest(None, None, MAX_PRICE, page=page, sort="-reviewCount",
+                take(api.search_cheapest(None, MIN_PRICE, MAX_PRICE, page=page, sort="-reviewCount",
                                          genre_id=g["genre_id"], point_only=True))
             except RuntimeError:
                 break
@@ -341,7 +346,7 @@ def fresh_picks(api, cfg, posts, sh, per_genre=2):
                 except ValueError:
                     pass
                 c.update(price=d["price"], point_rate=d["point_rate"])
-            if c["point_rate"] < 2 or c["price"] > MAX_PRICE:
+            if c["point_rate"] < 2 or not MIN_PRICE <= c["price"] <= MAX_PRICE:
                 continue
             if (len(c["_head"]) >= 4 and c["_head"] in heads) or is_dup(c, out + chosen):
                 continue
@@ -384,29 +389,30 @@ def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
         # 美容・健康のように種類が多いものは sort=-reviewCount（人気順）で取り、その中で実質価格の安い順に並べる
         ng = w.get("ng_words", [])
         items = []
-        max_p = min(w.get("max_price") or MAX_PRICE, MAX_PRICE)
+        max_p = MAX_PRICE
+        min_p = MIN_PRICE   # 項目ごとの価格帯より、全体の 2,000〜5,000円を優先
         for page in range(1, 11):
-            batch = api.search_cheapest(w["keyword"], w.get("min_price"), max_p, page=page,
+            batch = api.search_cheapest(w["keyword"], min_p, max_p, page=page,
                                         sort=w.get("sort", "+itemPrice"), genre_id=w.get("genre_id"))
             items += [it for it in batch
                       if not any(n in it["name"] for n in ng)
-                      and it["review_count"] >= w.get("min_reviews", 10)
-                      and it["price"] <= MAX_PRICE and not was_shown(sh, it)
+                      and it["review_count"] >= max(w.get("min_reviews", 30), 30)
+                      and MIN_PRICE <= it["price"] <= MAX_PRICE and not was_shown(sh, it)
                       and relevant(it, w)]   # 項目名と関係ない商品は出さない
             if len(items) >= 8 or len(batch) < 30:
                 break
         # ポイントアップ中の商品も追加で探す（倍率が高いほど実質価格が下がるので、最安の候補になりうる）
         try:
-            extra = api.search_cheapest(w["keyword"], w.get("min_price"), max_p,
+            extra = api.search_cheapest(w["keyword"], min_p, max_p,
                                         sort="-reviewCount", genre_id=w.get("genre_id"), point_only=True)
         except RuntimeError:
             extra = []
         seen = {it["item_code"] for it in items}
         items += [it for it in extra if it["item_code"] not in seen
-                  and it["price"] <= MAX_PRICE and not was_shown(sh, it)
+                  and MIN_PRICE <= it["price"] <= MAX_PRICE and not was_shown(sh, it)
                   and relevant(it, w)
                   and not any(n in it["name"] for n in ng)
-                  and it["review_count"] >= w.get("min_reviews", 10)]
+                  and it["review_count"] >= max(w.get("min_reviews", 30), 30)]
         for it in items:
             # 実質価格＝価格−獲得ポイント（通常1倍=1%として計算）
             it["effective"] = round(it["price"] * (1 - it["point_rate"] / 100))
@@ -466,11 +472,11 @@ def furusato_items(api, cfg, sh, avoid, n=4):
     for kw in _next_keywords("furusato", words, 2):
         for page in (1, 2):
             try:
-                batch = api.search_cheapest(kw, 1000, MAX_PRICE, page=page, sort="-reviewCount")
+                batch = api.search_cheapest(kw, 1000, FURUSATO_MAX, page=page, sort="-reviewCount")
             except RuntimeError:
                 break
             cands += [it for it in batch if "ふるさと納税" in it["name"] and it["review_count"] >= 10
-                      and it["price"] <= MAX_PRICE and not was_shown(sh, it)]
+                      and it["price"] <= FURUSATO_MAX and not was_shown(sh, it)]
             if len(batch) < 30:
                 break
     cands.sort(key=lambda it: (-it["point_rate"], -it["review_count"]))
@@ -494,7 +500,7 @@ def hotel_items(api, cfg, sh, n=4):
             batch = api.hotels(kw)
         except RuntimeError:
             continue
-        good = [h for h in batch if 0 < h["price"] <= MAX_PRICE and h["review_avg"] >= 4.0
+        good = [h for h in batch if 0 < h["price"] <= HOTEL_MAX and h["review_avg"] >= 4.0
                 and h["review_count"] >= 30 and h["image"] and not was_shown(sh, h)]
         good.sort(key=lambda h: (-h["review_avg"], -h["review_count"]))
         cands += good[:n // 2 + 1]
