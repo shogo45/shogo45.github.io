@@ -14,6 +14,7 @@ import urllib.request
 
 KOBO_URL = "https://openapi.rakuten.co.jp/services/api/Kobo/EbookSearch/20170426"
 SEARCH_URL = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
+HOTEL_URL = "https://openapi.rakuten.co.jp/engine/api/Travel/KeywordHotelSearch/20170426"
 RANKING_URL = "https://openapi.rakuten.co.jp/ichibaranking/api/IchibaItem/Ranking/20220601"
 
 # クラウド（GitHub Actions）用：キーは環境変数、それ以外は公開してよい config.public.json から読む
@@ -121,6 +122,29 @@ class Rakuten:
                 "review_avg": float(it.get("reviewAverage") or 0),
                 "item_number": it.get("itemNumber", ""),
                 "sales_date": it.get("salesDate", ""),
+            })
+        return out
+
+    def hotels(self, keyword, page=1):
+        """楽天トラベルのキーワード検索。リンクは affiliateId 付きで返ってくる。"""
+        if self.mock:
+            return []
+        try:
+            data = self._get(HOTEL_URL, {"keyword": keyword, "hits": 30, "page": page})
+        except RuntimeError as e:
+            if "404" in str(e) or "not_found" in str(e):   # 該当なし
+                return []
+            raise
+        out = []
+        for h in data.get("hotels", []):
+            b = (h[0] if isinstance(h, list) else h.get("hotel", [{}])[0]).get("hotelBasicInfo", {})
+            out.append({
+                "item_code": f"hotel:{b.get('hotelNo')}", "name": b.get("hotelName", ""),
+                "price": int(b.get("hotelMinCharge") or 0), "url": b.get("hotelInformationUrl", ""),
+                "image": b.get("hotelImageUrl", ""), "review_avg": float(b.get("reviewAverage") or 0),
+                "review_count": int(b.get("reviewCount") or 0), "area": b.get("address1", ""),
+                "station": b.get("nearestStation", ""), "special": b.get("hotelSpecial", ""),
+                "point_rate": 1, "shop": "",
             })
         return out
 

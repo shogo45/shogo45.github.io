@@ -238,7 +238,8 @@ def todays_watchlist(cfg, today):
     # 何回目の更新かを数えて、前回の続きのカテゴリから始める（定時実行が遅れても重ならない）
     rot = load_json(DATA / "rotation.json", {"next": 0})
     start = rot["next"] % len(allc)
-    save_json(DATA / "rotation.json", {"next": (start + n) % len(allc), "updated": today})
+    rot.update({"next": (start + n) % len(allc), "updated": today})
+    save_json(DATA / "rotation.json", rot)
     return [allc[(start + i) % len(allc)] for i in range(n)]
 
 
@@ -250,6 +251,34 @@ def dedupe_key(it):
     n = re.sub(COLOR_WORDS, "", short_name(it["name"], 80))
     n = re.sub(r"[\s　・/｜|()（）\[\]【】,，、。!！?？\-]", "", n)
     return n[:14]
+
+
+def _grams(it):
+    n = re.sub(COLOR_WORDS, "", short_name(it["name"], 40))
+    n = re.sub(r"[\s　・/｜|()（）\[\]【】,，、。!！?？\-~〜]", "", n)
+    return {n[i:i + 2] for i in range(len(n) - 1)}
+
+
+def same_product(a, b):
+    """名前の頭40字の2文字の組がどれだけ重なるか（出品違い・表記ゆれの同じ商品を見分ける）。"""
+    ga, gb = _grams(a), _grams(b)
+    return bool(ga and gb) and len(ga & gb) / min(len(ga), len(gb)) >= 0.5
+
+
+STOP_TOKENS = {"セット", "プレゼント", "ギフト", "ギフトセット", "ランキング", "オーガニック", "ダイエット", "アソート",
+               "アソートセット", "まとめ買い", "ポイント", "クーポン", "レビュー", "リットル", "ミネラルウォーター", "ティーバッグ"}
+
+
+def maker_tokens(it, ignore=""):
+    """商品名の中のメーカー名・ブランド名らしい語（カタカナ・英字で5文字以上）。項目名に含まれる語は除く。"""
+    toks = set(re.findall(r"[ァ-ヴー]{5,}|[A-Za-z][A-Za-z0-9&]{4,}", short_name(it["name"], 60)))
+    return {t for t in toks if t not in STOP_TOKENS and t.lower() not in ignore.lower()}
+
+
+def is_dup(it, chosen, ignore=""):
+    """同じ商品（出品違い・表記ゆれ・同じメーカーの同じ系統）なら True。"""
+    mt = maker_tokens(it, ignore)
+    return any(same_product(it, c) or (mt & maker_tokens(c, ignore)) for c in chosen)
 
 
 # ---- 一度サイトに出した商品は二度と出さない（ユーザー指定「ガラッと入れ替える」） ----
@@ -316,7 +345,7 @@ def fresh_picks(api, cfg, posts, sh, per_genre=2):
                 c.update(price=d["price"], point_rate=d["point_rate"])
             if c["point_rate"] < 2 or c["price"] > MAX_PRICE:
                 continue
-            if len(c["_head"]) >= 4 and c["_head"] in heads:
+            if (len(c["_head"]) >= 4 and c["_head"] in heads) or is_dup(c, out + chosen):
                 continue
             heads.add(c["_head"]); chosen.append(c)
             if len(chosen) == per_genre:
@@ -325,11 +354,12 @@ def fresh_picks(api, cfg, posts, sh, per_genre=2):
     return out
 
 
-def price_watch(api, cfg, today, exclude=None, sh=None):
+def price_watch(api, cfg, today, exclude=None, sh=None, picks_shown=None):
     """exclude：ほかの欄にすでに出している商品コード（項目をまたいだ重複を避ける）
     sh：これまでに出した商品（出したものは除き、まだ出していない中で実質価格の安い順）"""
     shown = set(exclude or [])
     sh = sh or {"codes": {}, "keys": {}}
+    seen_all = list(picks_shown or [])   # ほかの欄に出した商品（似た商品も除く）
     hist_path = DATA / "price_history.json"
     hist = load_json(hist_path, {})
     cutoff = (datetime.now() - timedelta(days=HISTORY_DAYS)).strftime("%Y-%m-%d")
@@ -376,9 +406,9 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
         top, keys = [], set()
         for it in items:
             k = dedupe_key(it)
-            k2 = (it.get("shop", ""), k[:6])   # 同じショップの香り違い・サイズ違い
+            k2 = ("shop", it.get("shop", ""))   # 1つの項目に同じショップは1件だけ（同じメーカーの出品違いを避ける）
             k3 = "".join(short_name(it["name"], 80).split()[:3])   # 別ショップの同じ商品（名前の最初の3語が同じ）
-            if it["item_code"] in shown or k in keys or k2 in keys or k3 in keys:
+            if it["item_code"] in shown or k in keys or k2 in keys or k3 in keys or is_dup(it, top + seen_all, w["name"] + " " + (w.get("keyword") or "")):
                 continue
             keys.update([k, k2, k3]); shown.add(it["item_code"]); top.append(it)
             if len(top) == 4:   # 4件（パソコン4列・スマホ2列でちょうど並ぶ）
@@ -389,6 +419,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
             for it in top:
                 shown.discard(it["item_code"])
             continue
+        seen_all += top
         h = [x for x in hist.get(w["name"], []) if x["date"] >= cutoff and x["date"] != today]
         if top:
             h.append({"date": today, "min_effective": top[0]["effective"], "min_price": min(i["price"] for i in top)})
@@ -396,6 +427,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
 
         past = [x["min_effective"] for x in h if x["date"] != today]
         results.append({
+            "alcohol": w.get("alcohol", False),
             "name": w["name"],
             "items": top,
             "low_30": min([x["min_effective"] for x in h if x["date"] >= (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")] or [None]) if h else None,
@@ -405,6 +437,86 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
 
     save_json(hist_path, hist)
     return results
+
+
+def _next_keywords(key, words, n):
+    """rotation.json に位置を覚えて、更新のたびに次のキーワードへ進む。"""
+    rot = load_json(DATA / "rotation.json", {})
+    i = rot.get(key, 0) % len(words)
+    rot[key] = (i + n) % len(words)
+    save_json(DATA / "rotation.json", rot)
+    return [words[(i + j) % len(words)] for j in range(n)]
+
+
+def furusato_items(api, cfg, sh, avoid, n=4):
+    """ふるさと納税：寄付額1万円未満・レビュー10件以上・まだ出していない返礼品を、ポイント倍率が高い順に。"""
+    words = cfg.get("furusato_keywords") or []
+    if not words:
+        return []
+    cands = []
+    for kw in _next_keywords("furusato", words, 2):
+        for page in (1, 2):
+            try:
+                batch = api.search_cheapest(kw, 1000, MAX_PRICE, page=page, sort="-reviewCount")
+            except RuntimeError:
+                break
+            cands += [it for it in batch if "ふるさと納税" in it["name"] and it["review_count"] >= 10
+                      and it["price"] <= MAX_PRICE and not was_shown(sh, it)]
+            if len(batch) < 30:
+                break
+    cands.sort(key=lambda it: (-it["point_rate"], -it["review_count"]))
+    out = []
+    for it in cands:
+        if not is_dup(it, out + avoid):
+            out.append(it)
+        if len(out) == n:
+            break
+    return out
+
+
+def hotel_items(api, cfg, sh, n=4):
+    """ホテル・旅館：最安料金1万円未満・評価4.0以上・レビュー30件以上・まだ出していない宿を、評価が高い順に。"""
+    words = cfg.get("hotel_keywords") or []
+    if not words:
+        return []
+    cands = []
+    for kw in _next_keywords("hotel", words, 2):
+        try:
+            batch = api.hotels(kw)
+        except RuntimeError:
+            continue
+        good = [h for h in batch if 0 < h["price"] <= MAX_PRICE and h["review_avg"] >= 4.0
+                and h["review_count"] >= 30 and h["image"] and not was_shown(sh, h)]
+        good.sort(key=lambda h: (-h["review_avg"], -h["review_count"]))
+        cands += good[:n // 2 + 1]
+    return cands[:n]
+
+
+def cards_section(title, items, kind, note=""):
+    """ふるさと納税・ホテルの画像カード欄。"""
+    if not items:
+        return ""
+    esc = html.escape
+    cards = []
+    for it in items:
+        img = f"<img src='{esc(it['image'])}' alt='' loading=lazy>" if it.get("image") else "<div class=noimg>No Image</div>"
+        if kind == "hotel":
+            body = (f"<span class=gtag>{esc(it['area'])}{'・' + esc(it['station']) + '駅' if it.get('station') else ''}</span>{img}"
+                    f"<span class=nm>{esc(it['name'][:40])}</span>"
+                    f"<span class=yen>¥{it['price']:,}〜</span><span class=rv>1人あたりの最安料金</span>"
+                    f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
+                    f"<span class=go>楽天トラベルで見る →</span>")
+        else:
+            badge = f"<span class=hot>🔥ポイント{it['point_rate']}倍</span>" if it["point_rate"] >= 2 else ""
+            body = (f"<span class=gtag>{esc(it['shop'][:20])}</span>{badge}{img}"
+                    f"<span class=nm>{esc(short_name(it['name'].replace('【ふるさと納税】', ''), 40))}</span>"
+                    f"<span class=yen>寄付額 ¥{it['price']:,}</span>"
+                    f"<span class=pts>ポイント{it['point_rate']}倍（{it['price'] * it['point_rate'] // 100:,}pt）</span>"
+                    f"<span class=rv>⭐{it['review_avg']}（{it['review_count']:,}件）</span>"
+                    f"<span class=go>楽天ふるさと納税で見る →</span>")
+        cards.append(f"<a class=card href='{esc(it['url'])}' rel='sponsored nofollow noopener' target=_blank>{body}</a>")
+    return (f"<section><h2>{esc(title)}</h2>" + (f"<p class=meta>{esc(note)}</p>" if note else "")
+            + "<div class=cards>" + "".join(cards) + "</div></section>")
 
 
 def articles_html():
@@ -556,7 +668,7 @@ def kobo_section(api, cfg, today):
     return "".join(out)
 
 
-def render_site(cfg, results, stamp, picks=None, books_html=""):
+def render_site(cfg, results, stamp, picks=None, books_html="", bottom_html=""):
     esc = html.escape
     sections = []
     for r in results:
@@ -581,6 +693,8 @@ def render_site(cfg, results, stamp, picks=None, books_html=""):
             kw = urllib.parse.quote(r.get("amazon_keyword") or r["name"])
             amz = (f"<p class=amz><a href='https://www.amazon.co.jp/s?k={kw}&tag={cfg['amazon_tag']}' "
                    f"rel='sponsored nofollow noopener' target=_blank>Amazonで「{esc(r['name'])}」を見る →</a></p>")
+        if r.get("alcohol"):
+            low = (low + "　" if low else "") + "※お酒は20歳になってから。20歳未満の飲酒は法律で禁止されています。"
         sections.append(
             f"<section><h2>{esc(r['name'])}の実質最安 {badge}</h2><p class=meta>{low}</p>{amz}"
             f"<div class=cards>{''.join(rows) or '<p class=meta>該当なし</p>'}</div></section>"
@@ -627,6 +741,7 @@ a{{color:inherit}}
 {picks_html(picks)}
 {articles_html()}
 {''.join(sections)}
+{bottom_html}
 {books_html}
 <p class=meta>最終更新：{stamp}</p>
 <p class=disc>Amazonのアソシエイトとして、当サイトは適格販売により収入を得ています。</p>
@@ -662,9 +777,16 @@ def main():
 
     sh = load_shown()
     picks = fresh_picks(api, cfg, posts, sh)
-    results = price_watch(api, cfg, today, exclude=[p["item_code"] for p in picks], sh=sh)
-    render_site(cfg, results, stamp, picks, kobo_section(api, cfg, today))
-    mark_shown(sh, picks + [it for r in results for it in r["items"]], today)
+    results = price_watch(api, cfg, today, exclude=[p["item_code"] for p in picks], sh=sh, picks_shown=picks)
+    shown_now = picks + [it for r in results for it in r["items"]]
+    furusato = furusato_items(api, cfg, sh, shown_now)
+    hotels = hotel_items(api, cfg, sh)
+    bottom = (cards_section("ふるさと納税（寄付額1万円未満・ポイント倍率が高い順）", furusato, "furusato",
+                            "控除の上限額は年収や家族構成で変わります。寄付の前に楽天ふるさと納税のシミュレーターで確認を。")
+              + cards_section("ホテル・旅館（1人1万円未満・評価4.0以上）", hotels, "hotel",
+                              "料金は時期・人数・プランで変わります。空室と最新の料金はリンク先で確認してください。"))
+    render_site(cfg, results, stamp, picks, kobo_section(api, cfg, today), bottom)
+    mark_shown(sh, shown_now + furusato + hotels, today)
     save_json(DATA / "shown_items.json", sh)
     queue = build_queue(posts, texts, today, results)
 
