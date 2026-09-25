@@ -43,8 +43,8 @@
   },
   {
    "date": "2026-09-25",
-   "min_effective": 1089,
-   "min_price": 1100
+   "min_effective": 1584,
+   "min_price": 1650
   }
  ],
  "日焼け止め": [
@@ -55,8 +55,8 @@
   },
   {
    "date": "2026-09-25",
-   "min_effective": 1742,
-   "min_price": 1760
+   "min_effective": 1881,
+   "min_price": 1900
   }
  ],
  "サプリ（マルチビタミン）": [
@@ -131,8 +131,8 @@
  "スマホスタンド": [
   {
    "date": "2026-09-25",
-   "min_effective": 810,
-   "min_price": 850
+   "min_effective": 1152,
+   "min_price": 1280
   }
  ],
  "LEDデスクライト": [
@@ -145,8 +145,8 @@
  "電気毛布": [
   {
    "date": "2026-09-25",
-   "min_effective": 1267,
-   "min_price": 1280
+   "min_effective": 2952,
+   "min_price": 3180
   }
  ],
  "ボックスティッシュ": [
@@ -336,6 +336,41 @@
    "date": "2026-09-25",
    "min_effective": 416,
    "min_price": 420
+  }
+ ],
+ "デスクライト": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1960,
+   "min_price": 1980
+  }
+ ],
+ "水筒 ステンレス": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 970,
+   "min_price": 980
+  }
+ ],
+ "モバイルバッテリー": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1510,
+   "min_price": 1580
+  }
+ ],
+ "ワイヤレスイヤホン": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1564,
+   "min_price": 1580
+  }
+ ],
+ "スマホ・パソコン用の充電器": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 2029,
+   "min_price": 2049
   }
  ]
 }
