@@ -278,36 +278,64 @@
  "素焼きナッツ": [
   {
    "date": "2026-09-25",
-   "min_effective": 1069,
-   "min_price": 1080
+   "min_effective": 1386,
+   "min_price": 1400
   }
  ],
  "ヘアオイル": [
   {
    "date": "2026-09-25",
-   "min_effective": 624,
-   "min_price": 630
+   "min_effective": 1089,
+   "min_price": 1100
   }
  ],
  "洗顔フォーム": [
   {
    "date": "2026-09-25",
-   "min_effective": 989,
-   "min_price": 999
+   "min_effective": 1525,
+   "min_price": 1540
   }
  ],
  "ハンドクリーム": [
   {
    "date": "2026-09-25",
-   "min_effective": 644,
-   "min_price": 650
+   "min_effective": 916,
+   "min_price": 935
   }
  ],
  "フェイスタオル": [
   {
    "date": "2026-09-25",
-   "min_effective": 931,
-   "min_price": 990
+   "min_effective": 1267,
+   "min_price": 1280
+  }
+ ],
+ "ワイン": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 1242,
+   "min_price": 1280
+  }
+ ],
+ "靴下（メンズ）": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 441,
+   "min_price": 445
+  }
+ ],
+ "収納ボックス": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 598,
+   "min_price": 630
+  }
+ ],
+ "充電ケーブル": [
+  {
+   "date": "2026-09-25",
+   "min_effective": 416,
+   "min_price": 420
   }
  ]
 }
