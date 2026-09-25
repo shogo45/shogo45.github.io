@@ -19,6 +19,10 @@ OUT = Path(os.environ.get("OUT_DIR") or Path(__file__).resolve().parent / "out")
 def main():
     if not os.environ.get("THREADS_TOKEN"):
         print("THREADS_TOKEN が未設定なのでスキップ"); return 0
+    try:
+        print(f"Threads認証OK @{threads.whoami(os.environ['THREADS_TOKEN'])}")
+    except Exception as e:
+        print(f"❌ Threadsのトークンが無効です（再発行が必要）: {e}"); return 1
     qpath = OUT / "threads_queue.json"
     if not qpath.exists():
         print("Threadsのキューがありません"); return 0

@@ -31,3 +31,10 @@ def refresh(token):
     q = urllib.parse.urlencode({"grant_type": "th_refresh_token", "access_token": token})
     with urllib.request.urlopen(f"https://graph.threads.net/refresh_access_token?{q}", timeout=30) as r:
         return json.load(r)["access_token"]
+
+
+def whoami(token):
+    """トークンが有効か確かめる（ユーザー名を返す）。"""
+    q = urllib.parse.urlencode({"fields": "username", "access_token": token})
+    with urllib.request.urlopen(f"{API}/me?{q}", timeout=30) as r:
+        return json.load(r)["username"]
