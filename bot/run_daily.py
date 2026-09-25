@@ -223,13 +223,15 @@ GENRE_TAGS = {
 
 # ---------------- ③ 最安値ウォッチ ----------------
 def todays_watchlist(cfg, today):
-    """固定の監視商品＋日替わりのカテゴリ（watchlist_pool から毎日 pool_per_day 個を順番に）。"""
-    pool = cfg.get("watchlist_pool", [])
-    n = cfg.get("pool_per_day", 0)
-    if not pool or not n:
-        return cfg["watchlist"]
-    start = (datetime.strptime(today, "%Y-%m-%d").toordinal() * n) % len(pool)
-    return cfg["watchlist"] + [pool[(start + i) % len(pool)] for i in range(n)]
+    """更新のたびにカテゴリを全部入れ替える（ユーザー指定「全入れ替え」）。
+    watchlist と watchlist_pool を1つの輪にして、1日4回の更新ごとに次の9カテゴリへ進む。"""
+    allc = cfg["watchlist"] + cfg.get("watchlist_pool", [])
+    n = min(len(cfg["watchlist"]) + cfg.get("pool_per_day", 0), len(allc))
+    # 何回目の更新かを数えて、前回の続きのカテゴリから始める（定時実行が遅れても重ならない）
+    rot = load_json(DATA / "rotation.json", {"next": 0})
+    start = rot["next"] % len(allc)
+    save_json(DATA / "rotation.json", {"next": (start + n) % len(allc), "updated": today})
+    return [allc[(start + i) % len(allc)] for i in range(n)]
 
 
 COLOR_WORDS = r"(ブラック|ホワイト|白|黒|ピンク|ブルー|グレー|レッド|グリーン|ベージュ|パープル|紫|ネイビー|シルバー|ゴールド|イエロー|オレンジ|ブラウン|クリーム|色|カラー)"
@@ -296,9 +298,9 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
 
     todays = todays_watchlist(cfg, today)
     # 新しい商品が3件未満になった項目は出さず、控えのカテゴリ（watchlist_pool の残り）と入れ替える
-    backups = [w for w in cfg.get("watchlist_pool", []) if w not in todays]
-    start = datetime.strptime(today, "%Y-%m-%d").toordinal() % max(len(backups), 1)
-    backups = backups[start:] + backups[:start]
+    allc = cfg["watchlist"] + cfg.get("watchlist_pool", [])
+    i = allc.index(todays[-1]) + 1 if todays else 0
+    backups = [w for w in allc[i:] + allc[:i] if w not in todays]
     for w in todays + backups:
         if len(results) >= len(todays):
             break
@@ -312,7 +314,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
                                         sort=w.get("sort", "+itemPrice"), genre_id=w.get("genre_id"))
             items += [it for it in batch
                       if not any(n in it["name"] for n in ng)
-                      and it["review_count"] >= w.get("min_reviews", 0)
+                      and it["review_count"] >= w.get("min_reviews", 10)
                       and it["price"] <= MAX_PRICE and not was_shown(sh, it)]
             if len(items) >= 8 or len(batch) < 30:
                 break
@@ -326,7 +328,7 @@ def price_watch(api, cfg, today, exclude=None, sh=None):
         items += [it for it in extra if it["item_code"] not in seen
                   and it["price"] <= MAX_PRICE and not was_shown(sh, it)
                   and not any(n in it["name"] for n in ng)
-                  and it["review_count"] >= w.get("min_reviews", 0)]
+                  and it["review_count"] >= w.get("min_reviews", 10)]
         for it in items:
             # 実質価格＝価格−獲得ポイント（通常1倍=1%として計算）
             it["effective"] = round(it["price"] * (1 - it["point_rate"] / 100))

@@ -30,7 +30,7 @@
   },
   "watchlist": [
     {
-      "name": "モバイルバッテリー 10000mAh",
+      "name": "モバイルバッテリー",
       "keyword": "モバイルバッテリー 10000mAh",
       "min_price": 1500,
       "max_price": 8000,
@@ -41,10 +41,10 @@
       ]
     },
     {
-      "name": "ワイヤレスイヤホン Anker",
-      "keyword": "Anker Soundcore イヤホン",
-      "min_price": 5000,
-      "max_price": 30000,
+      "name": "ワイヤレスイヤホン",
+      "keyword": "ワイヤレスイヤホン",
+      "min_price": 1500,
+      "max_price": 9999,
       "ng_words": [
         "のみ",
         "イヤーパッド",
@@ -60,10 +60,12 @@
         "右耳",
         "左耳",
         "片耳"
-      ]
+      ],
+      "sort": "-reviewCount",
+      "min_reviews": 50
     },
     {
-      "name": "USB-C 充電器 65W",
+      "name": "スマホ・パソコン用の充電器",
       "keyword": "USB-C 充電器 65W GaN",
       "min_price": 2000,
       "max_price": 10000,
@@ -273,7 +275,7 @@
       ]
     },
     {
-      "name": "ミネラルウォーター 2L",
+      "name": "ミネラルウォーター",
       "keyword": "ミネラルウォーター 2L 箱",
       "min_price": 500,
       "max_price": 4000,
@@ -293,7 +295,7 @@
       ]
     },
     {
-      "name": "無洗米 5kg",
+      "name": "無洗米",
       "keyword": "無洗米 5kg",
       "min_price": 1500,
       "max_price": 6000,
@@ -313,7 +315,7 @@
       ]
     },
     {
-      "name": "プロテイン（ホエイ 1kg）",
+      "name": "プロテイン",
       "keyword": "ホエイプロテイン 1kg",
       "min_price": 2000,
       "max_price": 8000,
@@ -540,7 +542,7 @@
       ]
     },
     {
-      "name": "ゴミ袋 45L",
+      "name": "ゴミ袋",
       "keyword": "ゴミ袋 45L",
       "min_price": 200,
       "max_price": 3000,
@@ -640,7 +642,7 @@
       ]
     },
     {
-      "name": "炭酸水 500ml",
+      "name": "炭酸水",
       "keyword": "炭酸水 500ml 24本",
       "min_price": 800,
       "max_price": 4000,
@@ -800,7 +802,7 @@
       ]
     },
     {
-      "name": "靴下 メンズ",
+      "name": "靴下（メンズ）",
       "keyword": "靴下 メンズ まとめ買い",
       "min_price": 300,
       "max_price": 4000,
@@ -840,7 +842,7 @@
       ]
     },
     {
-      "name": "USB-C ケーブル",
+      "name": "充電ケーブル",
       "keyword": "USB Type-C ケーブル",
       "min_price": 300,
       "max_price": 3000,
@@ -880,7 +882,7 @@
       ]
     },
     {
-      "name": "LEDデスクライト",
+      "name": "デスクライト",
       "keyword": "LEDデスクライト",
       "min_price": 1000,
       "max_price": 9999,
