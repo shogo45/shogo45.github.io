@@ -46,7 +46,7 @@ def main():
         if not claim(qpath, f"Threads 投稿中 {q['at']}"):
             print("ほかの実行が先に投稿中なので、この実行は投稿しない"); return 0
         try:
-            q["threads"] = threads.post(q["text"], os.environ["THREADS_TOKEN"])
+            q["threads"] = threads.post(q["text"], os.environ["THREADS_TOKEN"], q.get("image"))
             print(f"✅ Threads {q['at']} {q['threads']}")
         except Exception as e:
             q["threads"] = "failed"

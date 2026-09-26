@@ -35,7 +35,7 @@ def main():
     if not claim(qpath, f"Bluesky 投稿中 {q['time']}"):
         print("ほかの実行が先に投稿中なので、この実行は投稿しない"); return 0
     try:
-        q["bsky"] = bsky.post(q["text"], os.environ["BSKY_HANDLE"], os.environ["BSKY_APP_PASSWORD"])
+        q["bsky"] = bsky.post(q["text"], os.environ["BSKY_HANDLE"], os.environ["BSKY_APP_PASSWORD"], q.get("image"), q.get("alt", ""))
         print(f"✅ Bluesky {q['time']} {q['bsky']}")
     except Exception as e:
         q["bsky"] = "failed"

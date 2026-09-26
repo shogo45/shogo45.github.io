@@ -70,7 +70,19 @@ def fit(text, limit=300):
     return "\n".join(lines)
 
 
-def post(text, handle, app_password):
+def _upload_image(url, token):
+    """商品画像をダウンロードして Bluesky にアップロードし、blob を返す（1MB以下）。"""
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30) as r:
+        data, ctype = r.read(), r.headers.get("Content-Type", "image/jpeg")
+    if len(data) > 950_000:
+        return None
+    req = urllib.request.Request(f"{PDS}/com.atproto.repo.uploadBlob", data=data, method="POST",
+                                 headers={"Content-Type": ctype, "Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)["blob"]
+
+
+def post(text, handle, app_password, image=None, alt=""):
     token, did = login(handle, app_password)
     text, links = shorten_links(fit_raw(text))
     record = {"$type": "app.bsky.feed.post", "text": text, "langs": ["ja"],
@@ -78,6 +90,13 @@ def post(text, handle, app_password):
     f = _facets(text, links)
     if f:
         record["facets"] = f
+    if image:
+        try:
+            blob = _upload_image(image, token)
+            if blob:
+                record["embed"] = {"$type": "app.bsky.embed.images", "images": [{"image": blob, "alt": alt[:300]}]}
+        except Exception as e:   # 画像が取れなくても文章だけで出す
+            print(f"   画像なしで投稿（{e}）")
     r = _call("com.atproto.repo.createRecord", {"repo": did, "collection": "app.bsky.feed.post", "record": record}, token)
     rkey = r["uri"].rsplit("/", 1)[-1]
     return f"https://bsky.app/profile/{handle}/post/{rkey}"

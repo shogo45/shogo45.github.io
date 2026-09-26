@@ -160,7 +160,8 @@ def build_queue(candidates, texts, today, results=None):
     sw = load_weights().get("slot", {})
     slots = sorted(SLOTS, key=lambda t: sw.get(t, 1.0), reverse=True)
     queue = [{"time": t, "item_code": c["item_code"], "genre": c["genre"], "hook_id": c.get("hook_id", ""),
-              "text": by_code[c["item_code"]], "has_link": True, "posted": False}
+              "text": by_code[c["item_code"]], "has_link": True, "posted": False,
+              "image": (c.get("image") or "").replace("_ex=300x300", "_ex=600x600"), "alt": c.get("name", "")[:100]}
              for t, c in zip(slots, chosen)]
     queue += text_posts(candidates, results or [], today)
     # サイト紹介の投稿は毎日ほぼ同じ文になるので出さない（同じ内容を二度使わない）

@@ -18,10 +18,20 @@ def _post(path, params):
         return json.load(r)
 
 
-def post(text, token):
+def post(text, token, image=None):
+    """image（公開されている画像URL）があれば画像付きで投稿。画像で失敗したら文章だけで出す。"""
     text = text if len(text) <= 500 else text[:499] + "…"
-    c = _post("me/threads", {"media_type": "TEXT", "text": text, "access_token": token})
-    time.sleep(3)   # コンテナの準備を待つ（公式の推奨）
+    c = None
+    if image:
+        try:
+            c = _post("me/threads", {"media_type": "IMAGE", "image_url": image, "text": text, "access_token": token})
+            time.sleep(15)   # 画像の取り込みを待つ
+        except Exception as e:
+            print(f"   画像なしで投稿（{e}）")
+            c = None
+    if not c:
+        c = _post("me/threads", {"media_type": "TEXT", "text": text, "access_token": token})
+        time.sleep(3)   # コンテナの準備を待つ（公式の推奨）
     p = _post("me/threads_publish", {"creation_id": c["id"], "access_token": token})
     return p["id"]
 
